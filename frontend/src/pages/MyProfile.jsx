@@ -12,7 +12,10 @@ import {
   updateChatRequest,
   createArticle,
   getDoctorProfile,
-  updateDoctorProfile
+  updateDoctorProfile,
+  getMyArticles,
+  updateArticle,
+  deleteArticle
 } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -21,6 +24,7 @@ function MyProfile({ user }) {
   const [activeTab, setActiveTab] = useState(user?.is_doctor ? 'clinic-profile' : 'journals');
   const [friends, setFriends] = useState([]);
   const [journals, setJournals] = useState([]);
+  const [articles, setArticles] = useState([]);
   const [patients, setPatients] = useState([]);
   const [chatRequests, setChatRequests] = useState([]);
   const [doctorProfile, setDoctorProfile] = useState(null);
@@ -67,6 +71,9 @@ function MyProfile({ user }) {
       } else if (activeTab === 'journals') {
         const data = await getMyJournals();
         setJournals(data);
+      } else if (activeTab === 'my-articles' && user.is_doctor) {
+        const data = await getMyArticles();
+        setArticles(data);
       } else if (activeTab === 'patients' && user.is_doctor) {
         const data = await getPatients();
         setPatients(data);
@@ -170,6 +177,20 @@ function MyProfile({ user }) {
     } catch (error) {
       alert('Failed to delete journal');
     }
+  };
+
+  const handleDeleteArticle = async (articleId) => {
+    if (!window.confirm('Are you sure you want to delete this article?')) return;
+    try {
+      await deleteArticle(articleId);
+      loadData();
+    } catch (error) {
+      alert('Failed to delete article');
+    }
+  };
+
+  const handleEditArticle = (articleId) => {
+    navigate(`/articles/${articleId}`);
   };
 
   const handleChatRequestAction = async (requestId, status) => {
@@ -290,6 +311,21 @@ function MyProfile({ user }) {
                 }}
               >
                 💬 Chat Requests
+              </button>
+              <button
+                onClick={() => setActiveTab('my-articles')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '1rem 1.5rem',
+                  fontSize: '1.05rem',
+                  fontWeight: '600',
+                  color: activeTab === 'my-articles' ? '#7F7FD5' : '#999',
+                  borderBottom: activeTab === 'my-articles' ? '3px solid #7F7FD5' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                📰 My Articles
               </button>
               <button
                 onClick={() => setActiveTab('publish-article')}
@@ -535,6 +571,124 @@ function MyProfile({ user }) {
                 borderRadius: '15px'
               }}>
                 <p style={{ fontSize: '1.1rem' }}>No pending chat requests</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* My Articles Tab (Doctor) */}
+        {activeTab === 'my-articles' && user.is_doctor && (
+          <div>
+            <h2 style={{ marginBottom: '1.5rem' }}>My Articles</h2>
+            
+            {articles.length > 0 ? (
+              articles.map(article => (
+                <div 
+                  key={article.id} 
+                  style={{
+                    background: '#f8f9fa',
+                    padding: '1.5rem',
+                    borderRadius: '15px',
+                    marginBottom: '1rem',
+                    transition: 'transform 0.2s'
+                  }}
+                >
+                  <div style={{ 
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'start',
+                    marginBottom: '0.8rem'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <h3 
+                        style={{ 
+                          color: '#333', 
+                          marginBottom: '0.5rem',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => navigate(`/articles/${article.id}`)}
+                      >
+                        {article.title}
+                      </h3>
+                      <p style={{ 
+                        color: '#666', 
+                        fontSize: '0.95rem',
+                        marginBottom: '0.5rem'
+                      }}>
+                        {article.content.substring(0, 150)}...
+                      </p>
+                      <div style={{ 
+                        fontSize: '0.9rem', 
+                        color: '#999',
+                        marginTop: '0.5rem'
+                      }}>
+                        👍 {article.like_count} likes • 💬 {article.comment_count} comments
+                        {article.keywords && (
+                          <span style={{ marginLeft: '1rem' }}>
+                            🏷️ {article.keywords}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: '0.5rem',
+                      marginLeft: '1rem'
+                    }}>
+                      <button
+                        onClick={() => handleEditArticle(article.id)}
+                        style={{
+                          background: '#7F7FD5',
+                          color: 'white',
+                          border: 'none',
+                          padding: '0.6rem 1.2rem',
+                          borderRadius: '10px',
+                          fontSize: '0.9rem',
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteArticle(article.id)}
+                        style={{
+                          background: '#e74c3c',
+                          color: 'white',
+                          border: 'none',
+                          padding: '0.6rem 1.2rem',
+                          borderRadius: '10px',
+                          fontSize: '0.9rem',
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '3rem', 
+                color: '#999',
+                background: '#f8f9fa',
+                borderRadius: '15px'
+              }}>
+                <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>
+                  No articles yet. Start sharing your knowledge!
+                </p>
+                <button
+                  onClick={() => setActiveTab('publish-article')}
+                  className="submit-btn"
+                  style={{ width: 'auto' }}
+                >
+                  📝 Publish Your First Article
+                </button>
               </div>
             )}
           </div>

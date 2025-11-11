@@ -13,7 +13,7 @@ function ArticleTile({ article }) {
       />
       <div className="tile-content">
         <h3>{article.title}</h3>
-        <p>By {article.author.user.username}</p>
+        <p>By {article.author?.username || 'Unknown'}</p>
         <div style={{ marginTop: '1rem' }}>
           <span>👍 {article.like_count}</span>
           <span style={{ marginLeft: '1rem' }}>💬 {article.comment_count}</span>

@@ -136,6 +136,7 @@ class Article(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
+    author = db.relationship('Doctor', backref='articles', lazy=True)
     likes = db.relationship('ArticleLike', backref='article', lazy=True, cascade='all, delete-orphan')
     comments = db.relationship('ArticleComment', backref='article', lazy=True, cascade='all, delete-orphan')
     
