@@ -56,13 +56,7 @@ def analyze_sentiment(text: str) -> float:
         return 0.0
 
 def analyze_emotion(text: str) -> str:
-    """Classify a journal entry into one of five emotion categories using Gemini + robust context rules.
-
-    Notes:
-    - Uses temperature=0 for deterministic classification
-    - Applies crisis/negative-pattern overrides to avoid false Neutral/Happy for clearly distressed text
-    - Falls back to TextBlob polarity when LLM is unavailable or returns an unexpected output
-    """
+    """Classify a journal entry into one of five emotion categories using Gemini + robust context rules."""
 
     # If Gemini not available, fallback to polarity
     if not GEMINI_API_KEY or genai is None:
@@ -110,39 +104,19 @@ def analyze_emotion(text: str) -> str:
 
     try:
         genai.configure(api_key=GEMINI_API_KEY)
-        # Prefer deterministic output for classification tasks
-        generation_config = {"temperature": 0}
-        try:
-            # If types are available, use the typed config (future-proof)
-            from google.generativeai.types import GenerationConfig  # type: ignore
-            generation_config = GenerationConfig(temperature=0)
-        except Exception:
-            pass
-
         model = genai.GenerativeModel("gemini-pro")
-        response = model.generate_content(prompt, generation_config=generation_config)
+        response = model.generate_content(prompt)
         if not response or not response.text:
             raise ValueError("Empty Gemini response")
 
         raw = response.text.strip()
-
-        # Helper to extract the best matching label from arbitrary text
-        def _extract_label(candidate: str) -> str | None:
-            c = candidate.lower().strip()
-            # quick exact/startswith checks
-            for label in EMOTION_LABELS:
-                if c == label.lower() or c.startswith(label.lower()):
-                    return label
-            # remove common punctuation and spaces for fuzzy contains
-            import re
-            c_norm = re.sub(r"[^a-z]+", "", c)
-            label_map = {label: re.sub(r"[^a-z]+", "", label.lower()) for label in EMOTION_LABELS}
-            for label, lnorm in label_map.items():
-                if lnorm in c_norm:
-                    return label
-            return None
-
-        emotion = _extract_label(raw) or _fallback_polarity_to_emotion(analyze_sentiment(text_trimmed))
+        # Normalize output
+        for label in EMOTION_LABELS:
+            if raw.lower().startswith(label.lower()):
+                emotion = label
+                break
+        else:
+            emotion = _fallback_polarity_to_emotion(analyze_sentiment(text_trimmed))
 
         # --- HEURISTIC CORRECTION LAYER ---
         negative_patterns = [
