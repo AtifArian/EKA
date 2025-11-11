@@ -13,7 +13,49 @@ function ArticleTile({ article }) {
       />
       <div className="tile-content">
         <h3>{article.title}</h3>
-        <p>By {article.author?.username || 'Unknown'}</p>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '0.5rem',
+          marginTop: '0.5rem' 
+        }}>
+          <div style={{
+            width: '28px',
+            height: '28px',
+            borderRadius: '50%',
+            overflow: 'hidden',
+            border: '2px solid #7F7FD5',
+            background: '#f0f0f0',
+            flexShrink: 0
+          }}>
+            {article.author?.profile_picture ? (
+              <img 
+                src={`http://127.0.0.1:5050/${article.author.profile_picture}`}
+                alt={article.author.username}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }}
+              />
+            ) : (
+              <div style={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'linear-gradient(135deg, #7F7FD5, #86A8E7)',
+                color: 'white',
+                fontSize: '0.8rem',
+                fontWeight: 'bold'
+              }}>
+                {article.author?.username?.charAt(0).toUpperCase() || '?'}
+              </div>
+            )}
+          </div>
+          <span>By {article.author?.username || 'Unknown'}</span>
+        </div>
         <div style={{ marginTop: '1rem' }}>
           <span>👍 {article.like_count}</span>
           <span style={{ marginLeft: '1rem' }}>💬 {article.comment_count}</span>

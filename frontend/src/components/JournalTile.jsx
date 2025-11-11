@@ -13,16 +13,63 @@ function JournalTile({ journal }) {
       <div className="tile-content">
         <h3>{journal.title}</h3>
         <p style={{ marginTop: '0.8rem' }}>{journal.content.substring(0, 150)}...</p>
-        <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between' }}>
-          <span 
+        <div style={{ 
+          marginTop: '1rem', 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div 
             onClick={(e) => {
               e.stopPropagation();
               navigate(`/users/${journal.author.id}`);
             }}
-            style={{ cursor: 'pointer', color: '#7F7FD5' }}
+            style={{ 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem' 
+            }}
           >
-            {journal.author.username}
-          </span>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              overflow: 'hidden',
+              border: '2px solid #7F7FD5',
+              background: '#f0f0f0',
+              flexShrink: 0
+            }}>
+              {journal.author.profile_picture ? (
+                <img 
+                  src={`http://127.0.0.1:5050/${journal.author.profile_picture}`}
+                  alt={journal.author.username}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'linear-gradient(135deg, #7F7FD5, #86A8E7)',
+                  color: 'white',
+                  fontSize: '0.9rem',
+                  fontWeight: 'bold'
+                }}>
+                  {journal.author.username.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+            <span style={{ color: '#7F7FD5' }}>
+              {journal.author.username}
+            </span>
+          </div>
           <div>
             <span>❤️ {journal.heart_count}</span>
             <span style={{ marginLeft: '1rem' }}>💬 {journal.comment_count}</span>

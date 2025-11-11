@@ -436,22 +436,62 @@ function ArticleDetail({ user }) {
                   <div style={{ 
                     display: 'flex', 
                     justifyContent: 'space-between',
-                    marginBottom: '0.5rem'
+                    alignItems: 'center',
+                    marginBottom: '0.8rem'
                   }}>
-                    <strong 
+                    <div 
                       onClick={() => navigate(`/users/${c.user.id}`)}
                       style={{ 
-                        cursor: 'pointer', 
-                        color: '#7F7FD5'
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.8rem'
                       }}
                     >
-                      {c.user.username}
-                    </strong>
+                      <div style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        overflow: 'hidden',
+                        border: '2px solid #7F7FD5',
+                        background: '#f0f0f0',
+                        flexShrink: 0
+                      }}>
+                        {c.user.profile_picture ? (
+                          <img 
+                            src={`http://127.0.0.1:5050/${c.user.profile_picture}`}
+                            alt={c.user.username}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover'
+                            }}
+                          />
+                        ) : (
+                          <div style={{
+                            width: '100%',
+                            height: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'linear-gradient(135deg, #7F7FD5, #86A8E7)',
+                            color: 'white',
+                            fontSize: '1.2rem',
+                            fontWeight: 'bold'
+                          }}>
+                            {c.user.username.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <strong style={{ color: '#7F7FD5' }}>
+                        {c.user.username}
+                      </strong>
+                    </div>
                     <span style={{ fontSize: '0.9rem', color: '#999' }}>
                       {new Date(c.created_at).toLocaleDateString()}
                     </span>
                   </div>
-                  <p style={{ margin: 0, lineHeight: '1.6' }}>{c.content}</p>
+                  <p style={{ margin: 0, marginLeft: '48px', lineHeight: '1.6' }}>{c.content}</p>
                 </div>
               ))
             ) : (

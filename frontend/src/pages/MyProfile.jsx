@@ -1063,15 +1063,36 @@ function MyProfile({ user }) {
                     width: '50px',
                     height: '50px',
                     borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #7F7FD5, #86A8E7)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: '1.2rem',
-                    fontWeight: 'bold'
+                    overflow: 'hidden',
+                    border: '2px solid #7F7FD5',
+                    background: '#f0f0f0',
+                    flexShrink: 0
                   }}>
-                    {friend.username.charAt(0).toUpperCase()}
+                    {friend.profile_picture ? (
+                      <img 
+                        src={`http://127.0.0.1:5050/${friend.profile_picture}`}
+                        alt={friend.username}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: '100%',
+                        height: '100%',
+                        background: 'linear-gradient(135deg, #7F7FD5, #86A8E7)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '1.2rem',
+                        fontWeight: 'bold'
+                      }}>
+                        {friend.username.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <div style={{ fontWeight: '600', color: '#333' }}>{friend.username}</div>

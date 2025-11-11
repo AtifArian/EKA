@@ -27,8 +27,56 @@ function UserProfile() {
   return (
     <div className="container">
       <div style={{ background: 'white', borderRadius: '25px', padding: '3rem' }}>
-        <h1 style={{ color: '#7F7FD5' }}>{user.full_name || user.username}</h1>
-        <p>@{user.username}</p>
+        {/* Profile Header with Picture */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '2rem',
+          marginBottom: '2rem'
+        }}>
+          <div style={{
+            width: '100px',
+            height: '100px',
+            borderRadius: '50%',
+            overflow: 'hidden',
+            border: '4px solid #7F7FD5',
+            background: '#f0f0f0',
+            flexShrink: 0
+          }}>
+            {user.profile_picture ? (
+              <img 
+                src={`http://127.0.0.1:5050/${user.profile_picture}`}
+                alt={user.username}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }}
+              />
+            ) : (
+              <div style={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'linear-gradient(135deg, #7F7FD5, #86A8E7)',
+                color: 'white',
+                fontSize: '2.5rem',
+                fontWeight: 'bold'
+              }}>
+                {user.username.charAt(0).toUpperCase()}
+              </div>
+            )}
+          </div>
+          
+          <div>
+            <h1 style={{ color: '#7F7FD5', marginBottom: '0.3rem' }}>
+              {user.full_name || user.username}
+            </h1>
+            <p style={{ color: '#666', fontSize: '1.1rem' }}>@{user.username}</p>
+          </div>
+        </div>
 
         <h2 style={{ marginTop: '2rem' }}>Public Journals</h2>
         {journals.map(journal => (
