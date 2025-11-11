@@ -17,6 +17,7 @@ import ClinicDetail from './pages/ClinicDetail';
 import Articles from './pages/Articles';
 import ArticleDetail from './pages/ArticleDetail';
 import Journals from './pages/Journals';
+import JournalDetail from './pages/JournalDetail';
 import MyProfile from './pages/MyProfile';
 import UserProfile from './pages/UserProfile';
 
@@ -60,6 +61,7 @@ function App() {
             <Route path="/articles" element={<Articles user={user} />} />
             <Route path="/articles/:id" element={<ArticleDetail user={user} />} />
             <Route path="/journals" element={<Journals user={user} />} />
+            <Route path="/journals/:id" element={<JournalDetail user={user} />} />
             <Route path="/users/:id" element={<UserProfile />} />
             <Route 
               path="/profile" 

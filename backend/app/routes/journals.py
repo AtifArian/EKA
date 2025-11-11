@@ -37,12 +37,17 @@ def get_top_journals():
     return jsonify([journal.to_dict() for journal in top_journals]), 200
 
 @journals_bp.route('/<int:journal_id>', methods=['GET'])
+@jwt_required(optional=True)
 def get_journal(journal_id):
     journal = Journal.query.get(journal_id)
     if not journal:
         return jsonify({'error': 'Journal not found'}), 404
     
-    if not journal.is_public:
+    # Allow access if journal is public OR user is the owner
+    current_user_id = get_jwt_identity()
+    is_owner = current_user_id and int(current_user_id) == journal.user_id
+    
+    if not journal.is_public and not is_owner:
         return jsonify({'error': 'Journal is private'}), 403
     
     comments = JournalComment.query.filter_by(journal_id=journal_id).order_by(
@@ -51,6 +56,7 @@ def get_journal(journal_id):
     
     data = journal.to_dict()
     data['comments'] = [comment.to_dict() for comment in comments]
+    data['is_owner'] = is_owner  # Let frontend know if current user owns this
     
     return jsonify(data), 200
 
@@ -167,6 +173,11 @@ def heart_journal(journal_id):
     if not journal:
         return jsonify({'error': 'Journal not found'}), 404
     
+    # Only allow liking public journals or own journals
+    is_owner = current_user_id == journal.user_id
+    if not journal.is_public and not is_owner:
+        return jsonify({'error': 'Cannot like a private journal'}), 403
+    
     existing = JournalHeart.query.filter_by(
         user_id=current_user_id,
         journal_id=journal_id
@@ -175,7 +186,7 @@ def heart_journal(journal_id):
     if existing:
         db.session.delete(existing)
         db.session.commit()
-        return jsonify({'message': 'Journal unhearted'}), 200
+        return jsonify({'message': 'Journal unhearted', 'hearted': False}), 200
     
     heart = JournalHeart(
         user_id=current_user_id,
@@ -185,17 +196,25 @@ def heart_journal(journal_id):
     db.session.add(heart)
     db.session.commit()
     
-    return jsonify({'message': 'Journal hearted'}), 201
+    return jsonify({'message': 'Journal hearted', 'hearted': True}), 201
 
 @journals_bp.route('/<int:journal_id>/comments', methods=['POST'])
 @jwt_required()
 def add_journal_comment(journal_id):
     current_user_id = int(get_jwt_identity())
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     
     journal = Journal.query.get(journal_id)
     if not journal:
         return jsonify({'error': 'Journal not found'}), 404
+    
+    # Only allow commenting on public journals or own journals
+    is_owner = current_user_id == journal.user_id
+    if not journal.is_public and not is_owner:
+        return jsonify({'error': 'Cannot comment on a private journal'}), 403
+    
+    if not data.get('content'):
+        return jsonify({'error': 'Comment content is required'}), 400
     
     comment = JournalComment(
         user_id=current_user_id,
