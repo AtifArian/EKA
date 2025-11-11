@@ -1,6 +1,7 @@
 from flask import Flask
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from dotenv import load_dotenv
 from app.models import db, bcrypt
 from app.config import Config
 import os
@@ -8,6 +9,16 @@ import os
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+    
+    # Disable strict slashes to prevent 308 redirects that break CORS preflight
+    app.url_map.strict_slashes = False
+    
+    # Load environment variables from backend/.env if present
+    try:
+        backend_dir = os.path.dirname(app.root_path)  # points to backend/
+        load_dotenv(os.path.join(backend_dir, '.env'))
+    except Exception:
+        pass
     
     # Ensure SQLite path is absolute so running from different CWDs is safe
     db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
@@ -31,8 +42,10 @@ def create_app(config_class=Config):
             "http://127.0.0.1:5500"
         ],
         "allow_headers": ["Content-Type", "Authorization"],
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    }}, supports_credentials=True)
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "expose_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True
+    }})
     jwt = JWTManager(app)
     
     @jwt.invalid_token_loader
@@ -76,5 +89,18 @@ def create_app(config_class=Config):
     # Create tables
     with app.app_context():
         db.create_all()
+        # Lightweight migration: ensure 'emotion' column exists on Journal
+        try:
+            from sqlalchemy import text
+            engine = db.get_engine()
+            if app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite'):
+                with engine.connect() as conn:
+                    res = conn.execute(text("PRAGMA table_info('journal')"))
+                    cols = [row[1] for row in res.fetchall()]  # name is 2nd col
+                    if 'emotion' not in cols:
+                        conn.execute(text("ALTER TABLE journal ADD COLUMN emotion VARCHAR(20)"))
+        except Exception as _:
+            # Non-fatal; if migration fails, manual migration may be required
+            pass
     
     return app

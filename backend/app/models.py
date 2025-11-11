@@ -188,6 +188,8 @@ class Journal(db.Model):
     content = db.Column(db.Text, nullable=False)
     is_public = db.Column(db.Boolean, default=False)
     sentiment_score = db.Column(db.Float)
+    # New: discrete emotion label from {Very sad, Sad, Neutral, Happy, Very Happy}
+    emotion = db.Column(db.String(20))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
@@ -210,6 +212,7 @@ class Journal(db.Model):
         }
         if include_sentiment:
             data['sentiment_score'] = self.sentiment_score
+            data['emotion'] = self.emotion
         return data
 
 class JournalHeart(db.Model):

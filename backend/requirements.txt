@@ -3,6 +3,8 @@ Flask-SQLAlchemy
 Flask-CORS
 Flask-JWT-Extended
 Flask-Bcrypt
+python-dotenv
 textblob
 numpy
 google-auth
+google-generativeai

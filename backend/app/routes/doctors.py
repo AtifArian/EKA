@@ -4,6 +4,7 @@ from app import db
 from app.models import User, Doctor, ChatRequest  # ← FIXED: Removed DoctorPatient
 from app.utils.decorators import doctor_required
 from app.utils.suicide_prediction import predict_suicide_risk
+from collections import Counter
 import traceback
 
 doctors_bp = Blueprint('doctors', __name__)
@@ -118,15 +119,31 @@ def get_patient_detail(patient_id):
     if patient not in doctor.patients:
         return jsonify({'error': 'Unauthorized access'}), 403
     
-    # Get detailed data
+    # Build safe summary without exposing journal contents
     risk_score = predict_suicide_risk(patient_id)
     patient_data = patient.to_dict()
     patient_data['suicide_risk_score'] = risk_score
-    
-    # Include mood entries, journals, etc.
-    patient_data['mood_entries'] = [m.to_dict() for m in patient.mood_entries[-30:]]
-    patient_data['journals'] = [j.to_dict() for j in patient.journals[-10:]]
-    
+
+    # Include recent mood entries (no notes)
+    patient_data['mood_entries'] = [{
+        'id': m.id,
+        'mood_level': m.mood_level,
+        'date': m.date.isoformat() if m.date else None,
+        'created_at': m.created_at.isoformat() if m.created_at else None
+    } for m in patient.mood_entries[-30:]]
+
+    # Provide journals summary: id, created_at, emotion only (no title/content)
+    recent_journals = patient.journals[-10:]
+    patient_data['journal_summary'] = [{
+        'id': j.id,
+        'emotion': j.emotion,
+        'created_at': j.created_at.isoformat() if j.created_at else None
+    } for j in recent_journals]
+
+    # Aggregate emotion counts for quick report
+    emotion_counts = Counter([j.emotion for j in patient.journals if j.emotion])
+    patient_data['emotion_report'] = emotion_counts
+
     return jsonify(patient_data), 200
 
 @doctors_bp.route('/chat-requests', methods=['GET'])

@@ -1,11 +1,12 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import db, Journal, JournalHeart, JournalComment
-from app.utils.sentiment_analysis import analyze_sentiment
+from app.utils.sentiment_analysis import analyze_sentiment, analyze_emotion
 
 journals_bp = Blueprint('journals', __name__)
 
 @journals_bp.route('/', methods=['GET'])
+@journals_bp.route('', methods=['GET'])
 def get_journals():
     search = request.args.get('search', '')
     sort_by = request.args.get('sort', 'recent')
@@ -65,24 +66,48 @@ def get_my_journals():
     return jsonify([journal.to_dict() for journal in journals]), 200
 
 @journals_bp.route('/', methods=['POST'])
+@journals_bp.route('', methods=['POST'])
 @jwt_required()
 def create_journal():
     current_user_id = int(get_jwt_identity())
-    data = request.get_json()
-    
-    sentiment_score = analyze_sentiment(data['content'])
-    
+
+    # Support both JSON and form submissions
+    data = request.get_json(silent=True) or {}
+    title = data.get('title') or request.form.get('title')
+    content = data.get('content') or request.form.get('content')
+    is_public_raw = data.get('is_public', request.form.get('is_public', False))
+
+    # Normalize is_public from various types
+    if isinstance(is_public_raw, str):
+        is_public = is_public_raw.strip().lower() in ['true', '1', 'yes', 'y']
+    else:
+        is_public = bool(is_public_raw)
+
+    if not title or not content:
+        return jsonify({'error': 'title and content are required'}), 400
+
+    try:
+        sentiment_score = analyze_sentiment(content)
+    except Exception:
+        sentiment_score = 0.0
+
+    try:
+        emotion = analyze_emotion(content)
+    except Exception:
+        emotion = None
+
     journal = Journal(
-    user_id=current_user_id,
-        title=data['title'],
-        content=data['content'],
-        is_public=data.get('is_public', False),
-        sentiment_score=sentiment_score
+        user_id=current_user_id,
+        title=title,
+        content=content,
+        is_public=is_public,
+        sentiment_score=sentiment_score,
+        emotion=emotion
     )
-    
+
     db.session.add(journal)
     db.session.commit()
-    
+
     return jsonify(journal.to_dict()), 201
 
 @journals_bp.route('/<int:journal_id>', methods=['PUT'])
@@ -94,15 +119,26 @@ def update_journal(journal_id):
     if not journal or journal.user_id != current_user_id:
         return jsonify({'error': 'Journal not found'}), 404
     
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     
-    if 'title' in data:
+    if 'title' in data and data['title']:
         journal.title = data['title']
-    if 'content' in data:
+    if 'content' in data and data['content']:
         journal.content = data['content']
-        journal.sentiment_score = analyze_sentiment(data['content'])
+        try:
+            journal.sentiment_score = analyze_sentiment(data['content'])
+        except Exception:
+            journal.sentiment_score = 0.0
+        try:
+            journal.emotion = analyze_emotion(data['content'])
+        except Exception:
+            journal.emotion = journal.emotion  # keep previous
     if 'is_public' in data:
-        journal.is_public = data['is_public']
+        raw_public = data['is_public']
+        if isinstance(raw_public, str):
+            journal.is_public = raw_public.strip().lower() in ['true','1','yes','y']
+        else:
+            journal.is_public = bool(raw_public)
     
     db.session.commit()
     
