@@ -68,17 +68,47 @@ def analyze_emotion(text: str) -> str:
     try:
         genai.configure(api_key=GEMINI_API_KEY)
         model = genai.GenerativeModel("gemini-pro")
+        # prompt = (
+        #     "You are analyzing a mental health journal entry. Classify the emotional state into exactly one of these categories:\n\n"
+        #     "- Very sad: Severe distress, depression, suicidal thoughts, hopelessness, extreme sadness, self-harm ideation, crisis\n"
+        #     "- Sad: Feeling down, unhappy, anxious, worried, stressed, lonely, disappointed\n"
+        #     "- Neutral: Calm, mundane daily activities, factual observations, neither positive nor negative\n"
+        #     "- Happy: Feeling good, content, positive experiences, grateful, optimistic\n"
+        #     "- Very Happy: Extremely joyful, excited, euphoric, celebrating, very grateful\n\n"
+        #     "IMPORTANT: If the entry mentions suicidal thoughts, self-harm, extreme hopelessness, or severe depression, it MUST be classified as 'Very sad'.\n\n"
+        #     "Return ONLY one of these exact labels: Very sad, Sad, Neutral, Happy, Very Happy\n\n"
+        #     "Journal entry:\n" + text[:4000]
+        # )
         prompt = (
-            "You are analyzing a mental health journal entry. Classify the emotional state into exactly one of these categories:\n\n"
-            "- Very sad: Severe distress, depression, suicidal thoughts, hopelessness, extreme sadness, self-harm ideation, crisis\n"
-            "- Sad: Feeling down, unhappy, anxious, worried, stressed, lonely, disappointed\n"
-            "- Neutral: Calm, mundane daily activities, factual observations, neither positive nor negative\n"
-            "- Happy: Feeling good, content, positive experiences, grateful, optimistic\n"
-            "- Very Happy: Extremely joyful, excited, euphoric, celebrating, very grateful\n\n"
-            "IMPORTANT: If the entry mentions suicidal thoughts, self-harm, extreme hopelessness, or severe depression, it MUST be classified as 'Very sad'.\n\n"
-            "Return ONLY one of these exact labels: Very sad, Sad, Neutral, Happy, Very Happy\n\n"
-            "Journal entry:\n" + text[:4000]
+                "You are an expert emotion analysis model specializing in interpreting human mental health journal entries. "
+                "Your task is to classify the **dominant emotional tone** of the journal into one of exactly five discrete categories:\n\n"
+                "1. Very sad — severe emotional distress, hopelessness, loneliness, crying, grief, heartbreak, despair, self-hate, or suicidal ideation.\n"
+                "2. Sad — mild to moderate sadness, disappointment, anxiety, fear, worry, rejection, feeling unwanted, low energy, or general unhappiness.\n"
+                "3. Neutral — emotionally balanced, descriptive, factual, reflective, routine, or analytical writing with no strong emotion.\n"
+                "4. Happy — contentment, peace, gratitude, satisfaction, optimism, affection, motivation, or positive reflection.\n"
+                "5. Very Happy — excitement, joy, pride, enthusiasm, celebration, euphoria, strong love, or achievement.\n\n"
+                "Guidelines for interpretation:\n"
+                "- Always base your decision on the **overall emotional tone**, not isolated words.\n"
+                "- If both positive and negative emotions appear, choose the one that is **more dominant or intense**.\n"
+                "- If sarcasm, irony, or emotional masking is detected (e.g. 'I'm totally fine' but tone suggests pain), infer the true emotional state.\n"
+                "- If hopelessness, despair, or suicidal thoughts appear → classify as 'Very sad'.\n"
+                "- If both emotional highs and lows appear, prioritize the **emotion driving the reflection**.\n"
+                "- Do NOT invent new labels; respond with exactly one of: Very sad, Sad, Neutral, Happy, Very Happy.\n"
+                "- Be consistent and humanly empathetic in interpretation.\n\n"
+                "Examples:\n"
+                "A. 'I failed again. Maybe I’m just not good enough.' → Very sad\n"
+                "B. 'Feeling tired but getting through the day.' → Sad\n"
+                "C. 'Did some cleaning and watched TV.' → Neutral\n"
+                "D. 'Had lunch with a friend, feeling grateful.' → Happy\n"
+                "E. 'Got accepted into my dream job!!!' → Very Happy\n"
+                "F. 'I laughed a lot today but deep down I feel empty.' → Sad\n"
+                "G. 'Life is pointless. I want to end it all.' → Very sad\n"
+                "H. 'Meditated today and felt calm and centered.' → Happy\n"
+                "I. 'Finally finished my big project. So proud!' → Very Happy\n\n"
+                "Now analyze the following journal entry carefully and output only one label:\n\n"
+                f"Journal entry:\n{text[:4000]}"
         )
+
         response = model.generate_content(prompt)
         if response and response.text:
             raw = response.text.strip()
