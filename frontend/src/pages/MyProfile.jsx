@@ -15,7 +15,9 @@ import {
   updateDoctorProfile,
   getMyArticles,
   updateArticle,
-  deleteArticle
+  deleteArticle,
+  uploadProfilePicture,
+  deleteProfilePicture
 } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -54,6 +56,8 @@ function MyProfile({ user }) {
     age_group: '',
     location: ''
   });
+
+  const [uploadingPicture, setUploadingPicture] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -193,6 +197,46 @@ function MyProfile({ user }) {
     navigate(`/articles/${articleId}`);
   };
 
+  const handleProfilePictureChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size should be less than 5MB');
+      return;
+    }
+    
+    try {
+      setUploadingPicture(true);
+      await uploadProfilePicture(file);
+      alert('Profile picture updated successfully!');
+      window.location.reload(); // Reload to update user data
+    } catch (error) {
+      alert('Failed to upload profile picture');
+    } finally {
+      setUploadingPicture(false);
+    }
+  };
+
+  const handleDeleteProfilePicture = async () => {
+    if (!window.confirm('Are you sure you want to delete your profile picture?')) return;
+    
+    try {
+      await deleteProfilePicture();
+      alert('Profile picture deleted successfully!');
+      window.location.reload(); // Reload to update user data
+    } catch (error) {
+      alert('Failed to delete profile picture');
+    }
+  };
+
   const handleChatRequestAction = async (requestId, status) => {
     try {
       await updateChatRequest(requestId, { status });
@@ -213,13 +257,120 @@ function MyProfile({ user }) {
         padding: '3rem',
         boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
       }}>
-        <div style={{ marginBottom: '2rem' }}>
-          <h1 style={{ color: '#7F7FD5', marginBottom: '0.5rem' }}>
-            {user.full_name || user.username}
-          </h1>
-          <p style={{ color: '#666', fontSize: '1.1rem' }}>
-            {user.is_doctor ? '👨‍⚕️ Doctor' : '👤 User'} • {user.email}
-          </p>
+        {/* Profile Header with Picture */}
+        <div style={{ 
+          marginBottom: '2rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '2rem'
+        }}>
+          <div style={{ position: 'relative' }}>
+            <div style={{
+              width: '120px',
+              height: '120px',
+              borderRadius: '50%',
+              overflow: 'hidden',
+              border: '4px solid #7F7FD5',
+              background: '#f0f0f0'
+            }}>
+              {user.profile_picture ? (
+                <img 
+                  src={`http://127.0.0.1:5050/${user.profile_picture}`}
+                  alt="Profile"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'linear-gradient(135deg, #7F7FD5, #86A8E7)',
+                  color: 'white',
+                  fontSize: '3rem',
+                  fontWeight: 'bold'
+                }}>
+                  {user.username.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+            
+            {/* Upload button overlay */}
+            <label 
+              htmlFor="profile-picture-input"
+              style={{
+                position: 'absolute',
+                bottom: '0',
+                right: '0',
+                background: '#7F7FD5',
+                color: 'white',
+                width: '35px',
+                height: '35px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                border: '3px solid white',
+                fontSize: '1.2rem'
+              }}
+              title="Change profile picture"
+            >
+              📷
+            </label>
+            <input
+              id="profile-picture-input"
+              type="file"
+              accept="image/*"
+              onChange={handleProfilePictureChange}
+              style={{ display: 'none' }}
+            />
+          </div>
+          
+          <div style={{ flex: 1 }}>
+            <h1 style={{ color: '#7F7FD5', marginBottom: '0.5rem' }}>
+              {user.full_name || user.username}
+            </h1>
+            <p style={{ color: '#666', fontSize: '1.1rem', marginBottom: '1rem' }}>
+              {user.is_doctor ? '👨‍⚕️ Doctor' : '👤 User'} • {user.email}
+            </p>
+            
+            {/* Profile picture actions */}
+            <div style={{ display: 'flex', gap: '0.8rem', marginTop: '1rem' }}>
+              {user.profile_picture && (
+                <button
+                  onClick={handleDeleteProfilePicture}
+                  style={{
+                    background: '#e74c3c',
+                    color: 'white',
+                    border: 'none',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  🗑️ Remove Picture
+                </button>
+              )}
+              {uploadingPicture && (
+                <span style={{ 
+                  color: '#7F7FD5', 
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  Uploading...
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Tabs */}

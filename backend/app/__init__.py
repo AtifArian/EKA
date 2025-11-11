@@ -86,6 +86,13 @@ def create_app(config_class=Config):
     app.register_blueprint(journals_bp, url_prefix='/api/journals')
     app.register_blueprint(mood_bp, url_prefix='/api/mood')
     
+    # Serve uploaded files
+    from flask import send_from_directory
+    @app.route('/uploads/<path:filename>')
+    def serve_uploads(filename):
+        upload_dir = os.path.abspath(app.config['UPLOAD_FOLDER'])
+        return send_from_directory(upload_dir, filename)
+    
     # Create tables
     with app.app_context():
         db.create_all()

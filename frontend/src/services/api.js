@@ -32,6 +32,14 @@ export const getFriends = () => api.get('/users/friends').then(res => res.data);
 export const addFriend = (friendId) => api.post(`/users/friends/${friendId}`).then(res => res.data);
 export const removeFriend = (friendId) => api.delete(`/users/friends/${friendId}`).then(res => res.data);
 export const updateProfile = (data) => api.put('/users/profile', data).then(res => res.data);
+export const uploadProfilePicture = (file) => {
+  const formData = new FormData();
+  formData.append('profile_picture', file);
+  return api.put('/users/profile', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }).then(res => res.data);
+};
+export const deleteProfilePicture = () => api.delete('/users/profile-picture').then(res => res.data);
 
 export const getClinics = (params) => {
   const query = new URLSearchParams(params).toString();
