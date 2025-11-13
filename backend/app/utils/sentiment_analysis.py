@@ -12,6 +12,10 @@ except ImportError:  # library may not be installed yet
     genai = None
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+# Model selection: allow override via GEMINI_MODEL, default to the requested flash preview model.
+# Will fallback to 'gemini-pro' if the specified model is unavailable.
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-preview-09-2025")
+EMOTION_DEBUG = os.environ.get("EMOTION_DEBUG")  # set to any value to enable debug prints
 
 EMOTION_LABELS = [
     "Very sad",
@@ -104,7 +108,15 @@ def analyze_emotion(text: str) -> str:
 
     try:
         genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-pro")
+        chosen_model = GEMINI_MODEL
+        try:
+            model = genai.GenerativeModel(chosen_model)
+        except Exception:
+            # Fallback if preview model not available
+            chosen_model = "gemini-pro"
+            model = genai.GenerativeModel(chosen_model)
+        if EMOTION_DEBUG:
+            print(f"[emotion] Using Gemini model: {chosen_model}")
         response = model.generate_content(prompt)
         if not response or not response.text:
             raise ValueError("Empty Gemini response")
