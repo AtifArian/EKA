@@ -25,6 +25,7 @@ class User(db.Model):
     profile_picture = db.Column(db.String(255))
     is_doctor = db.Column(db.Boolean, default=False)
     google_id = db.Column(db.String(255), unique=True)
+    free_booking_used = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
