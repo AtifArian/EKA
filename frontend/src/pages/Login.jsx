@@ -44,7 +44,7 @@ function Login({ onLogin }) {
   return (
     <div className="container">
       <div className="form-container">
-        <h2>Login to MindCare</h2>
+        <h2>Login to EKA</h2>
         
         {error && <div className="error-message">{error}</div>}
         

@@ -20,7 +20,7 @@ import {
 } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
-function MyProfile({ user }) {
+function MyProfile({ user, setUser }) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(user?.is_doctor ? 'clinic-profile' : 'journals');
   const [friends, setFriends] = useState([]);
@@ -53,7 +53,9 @@ function MyProfile({ user }) {
     expertise: '',
     education: '',
     age_group: '',
-    location: ''
+    location: '',
+    session_charge: '',
+    google_maps_link: ''
   });
 
   const [uploadingPicture, setUploadingPicture] = useState(false);
@@ -86,7 +88,9 @@ function MyProfile({ user }) {
             expertise: profile.expertise || '',
             education: profile.education || '',
             age_group: profile.age_group || '',
-            location: profile.location || ''
+            location: profile.location || '',
+            session_charge: profile.session_charge || '',
+            google_maps_link: profile.google_maps_link || ''
           });
         } catch (error) {
           console.log('No doctor profile yet');
@@ -108,7 +112,17 @@ function MyProfile({ user }) {
   const handleUpdateClinicProfile = async (e) => {
     e.preventDefault();
     try {
-      await updateDoctorProfile(clinicForm);
+      // Extract URL from iframe code if user pasted embed code instead of URL
+      let googleMapsLink = clinicForm.google_maps_link;
+      if (googleMapsLink && googleMapsLink.includes('<iframe')) {
+        const srcMatch = googleMapsLink.match(/src=["']([^"']+)["']/);
+        if (srcMatch) {
+          googleMapsLink = srcMatch[1];
+        }
+      }
+      
+      const dataToSubmit = { ...clinicForm, google_maps_link: googleMapsLink };
+      await updateDoctorProfile(dataToSubmit);
       alert('Clinic profile updated successfully!');
       loadData();
     } catch (error) {
@@ -214,9 +228,11 @@ function MyProfile({ user }) {
     
     try {
       setUploadingPicture(true);
-      await uploadProfilePicture(file);
+      const updatedUser = await uploadProfilePicture(file);
+      // Update localStorage and state with new user data
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
       alert('Profile picture updated successfully!');
-      window.location.reload(); // Reload to update user data
     } catch (error) {
       alert('Failed to upload profile picture');
     } finally {
@@ -229,8 +245,11 @@ function MyProfile({ user }) {
     
     try {
       await deleteProfilePicture();
+      // Update user data in localStorage and state
+      const updatedUser = { ...user, profile_picture: null };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
       alert('Profile picture deleted successfully!');
-      window.location.reload(); // Reload to update user data
     } catch (error) {
       alert('Failed to delete profile picture');
     }
@@ -584,6 +603,33 @@ function MyProfile({ user }) {
                   onChange={(e) => setClinicForm({...clinicForm, location: e.target.value})}
                   placeholder="e.g., Dhaka, Bangladesh"
                 />
+              </div>
+
+              <div className="form-group">
+                <label>Session Charge (Amount per session) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={clinicForm.session_charge}
+                  onChange={(e) => setClinicForm({...clinicForm, session_charge: e.target.value})}
+                  placeholder="e.g., 1500"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Google Maps Link (Clinic Location)</label>
+                <input
+                  type="text"
+                  value={clinicForm.google_maps_link}
+                  onChange={(e) => setClinicForm({...clinicForm, google_maps_link: e.target.value})}
+                  placeholder="https://maps.google.com/... or paste embed code"
+                />
+                <small style={{color: '#666', fontSize: '0.85rem', marginTop: '0.3rem', display: 'block'}}>
+                  <strong>Option 1:</strong> Search your clinic on Google Maps → Click "Share" → "Embed a map" → Copy the URL from the iframe src<br/>
+                  <strong>Option 2:</strong> Or just paste the regular share link (e.g., https://maps.app.goo.gl/...)
+                </small>
               </div>
 
               <button type="submit" className="submit-btn">
