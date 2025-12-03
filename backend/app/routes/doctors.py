@@ -73,6 +73,13 @@ def update_doctor_profile():
     if 'google_maps_link' in data:
         doctor.google_maps_link = data['google_maps_link']
     
+    # Check if profile is complete (all required fields filled)
+    if (doctor.specialization and doctor.bio and doctor.expertise and 
+        doctor.education and doctor.age_group and doctor.session_charge is not None):
+        doctor.is_profile_complete = True
+    else:
+        doctor.is_profile_complete = False
+    
     db.session.commit()
     
     return jsonify({

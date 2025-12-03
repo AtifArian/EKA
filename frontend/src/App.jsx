@@ -50,7 +50,7 @@ function App() {
         <div className="App">
           <Navbar user={user} onLogout={handleLogout} />
           
-          {user && <MoodTracker />}
+          {user && !user.is_doctor && <MoodTracker />}
           
           <Routes>
             <Route path="/" element={<Home user={user} />} />

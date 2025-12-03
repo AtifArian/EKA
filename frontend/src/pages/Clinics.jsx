@@ -50,55 +50,219 @@ function Clinics() {
     });
   };
 
+  // Group clinics by specialization (already sorted by backend)
+  const groupedClinics = clinics.reduce((groups, clinic) => {
+    const spec = clinic.specialization || 'Other';
+    if (!groups[spec]) {
+      groups[spec] = [];
+    }
+    groups[spec].push(clinic);
+    return groups;
+  }, {});
+
+  const API_BASE = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5050';
+
   return (
-    <div className="container">
-      <h1 style={{ color: 'white', marginBottom: '2rem' }}>Find Your Therapist</h1>
-      
-      <div className="search-filter-bar">
+    <div className="container" style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+      <div style={{ 
+        background: 'white', 
+        borderRadius: '20px', 
+        padding: '2rem',
+        marginBottom: '2rem',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+      }}>
         <input
           type="text"
           name="search"
-          placeholder="Search by name or bio..."
+          placeholder="Search by name..."
           value={filters.search}
           onChange={handleFilterChange}
-          className="search-input"
+          style={{
+            width: '100%',
+            padding: '1rem',
+            fontSize: '1rem',
+            border: '2px solid #e0e0e0',
+            borderRadius: '10px',
+            outline: 'none'
+          }}
         />
         
-        <select
-          name="specialization"
-          value={filters.specialization}
-          onChange={handleFilterChange}
-          className="filter-select"
-        >
-          <option value="">All Specializations</option>
-          {specializations.map(spec => (
-            <option key={spec} value={spec}>{spec}</option>
-          ))}
-        </select>
-        
-        <select
-          name="sort"
-          value={filters.sort}
-          onChange={handleFilterChange}
-          className="sort-select"
-        >
-          <option value="highest">Highest Reviews</option>
-          <option value="lowest">Lowest Reviews</option>
-        </select>
+        <div style={{ 
+          display: 'flex', 
+          gap: '1rem', 
+          marginTop: '1rem',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <select
+            name="specialization"
+            value={filters.specialization}
+            onChange={handleFilterChange}
+            style={{
+              padding: '0.5rem 1rem',
+              fontSize: '0.9rem',
+              border: '2px solid #e0e0e0',
+              borderRadius: '8px',
+              background: 'white',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="">All Specializations</option>
+            {specializations.map(spec => (
+              <option key={spec} value={spec}>{spec}</option>
+            ))}
+          </select>
+          
+          <select
+            name="sort"
+            value={filters.sort}
+            onChange={handleFilterChange}
+            style={{
+              padding: '0.5rem 1rem',
+              fontSize: '0.9rem',
+              border: '2px solid #e0e0e0',
+              borderRadius: '8px',
+              background: 'white',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="highest">Sorted by: Highest Reviews</option>
+            <option value="lowest">Sorted by: Lowest Reviews</option>
+          </select>
+        </div>
       </div>
 
       {loading ? (
         <div className="loading">Loading clinics...</div>
-      ) : (
-        <div className="clinic-grid">
-          {clinics.map(clinic => (
-            <ClinicTile key={clinic.id} clinic={clinic} />
-          ))}
+      ) : filters.specialization ? (
+        // Show filtered results as grid when a specific specialization is selected
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+          gap: '2rem',
+          marginTop: '2rem'
+        }}>
+          {clinics.map(clinic => {
+            const profilePictureUrl = clinic.user.profile_picture 
+              ? `${API_BASE.replace('/api', '')}${clinic.user.profile_picture}`
+              : 'https://via.placeholder.com/200x200?text=Doctor';
+            
+            return (
+              <div
+                key={clinic.id}
+                onClick={() => window.location.href = `/clinics/${clinic.id}`}
+                style={{
+                  background: 'white',
+                  borderRadius: '20px',
+                  padding: '2rem',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-5px)';
+                  e.currentTarget.style.boxShadow = '0 8px 25px rgba(0,0,0,0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)';
+                }}
+              >
+                <img
+                  src={profilePictureUrl}
+                  alt={clinic.user.full_name}
+                  style={{
+                    width: '120px',
+                    height: '120px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    marginBottom: '1rem',
+                    border: '4px solid #f0f0f0'
+                  }}
+                />
+                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: '#333' }}>
+                  {clinic.user.full_name || clinic.user.username}
+                </h3>
+                <p style={{ fontSize: '0.9rem', color: '#666' }}>
+                  ⭐ {(clinic.average_rating || 0).toFixed(1)}
+                </p>
+              </div>
+            );
+          })}
         </div>
+      ) : (
+        // Show grouped by specialization
+        Object.entries(groupedClinics).map(([specialization, clinicsInGroup]) => (
+          <div key={specialization} style={{ marginBottom: '3rem' }}>
+            <h2 style={{ 
+              color: '#333', 
+              marginBottom: '1.5rem',
+              fontSize: '1.5rem',
+              fontWeight: '600'
+            }}>
+              Category: {specialization}
+            </h2>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+              gap: '2rem'
+            }}>
+              {clinicsInGroup.map(clinic => {
+                const profilePictureUrl = clinic.user.profile_picture 
+                  ? `${API_BASE.replace('/api', '')}${clinic.user.profile_picture}`
+                  : 'https://via.placeholder.com/200x200?text=Doctor';
+                
+                return (
+                  <div
+                    key={clinic.id}
+                    onClick={() => window.location.href = `/clinics/${clinic.id}`}
+                    style={{
+                      background: 'white',
+                      borderRadius: '20px',
+                      padding: '2rem',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'transform 0.2s, box-shadow 0.2s',
+                      boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-5px)';
+                      e.currentTarget.style.boxShadow = '0 8px 25px rgba(0,0,0,0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)';
+                    }}
+                  >
+                    <img
+                      src={profilePictureUrl}
+                      alt={clinic.user.full_name}
+                      style={{
+                        width: '120px',
+                        height: '120px',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        marginBottom: '1rem',
+                        border: '4px solid #f0f0f0'
+                      }}
+                    />
+                    <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: '#333' }}>
+                      {clinic.user.full_name || clinic.user.username}
+                    </h3>
+                    <p style={{ fontSize: '0.9rem', color: '#666' }}>
+                      ⭐ {(clinic.average_rating || 0).toFixed(1)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))
       )}
 
       {!loading && clinics.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '3rem', color: 'white' }}>
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#666' }}>
           <h3>No clinics found</h3>
           <p>Try adjusting your search filters</p>
         </div>
