@@ -47,7 +47,7 @@ function Signup({ onLogin }) {
   return (
     <div className="container">
       <div className="form-container">
-        <h2>Join MindCare</h2>
+        <h2>Join EKA</h2>
         
         {error && <div className="error-message">{error}</div>}
         
