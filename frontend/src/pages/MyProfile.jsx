@@ -20,7 +20,7 @@ import {
 } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
-function MyProfile({ user }) {
+function MyProfile({ user, setUser }) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(user?.is_doctor ? 'clinic-profile' : 'journals');
   const [friends, setFriends] = useState([]);
@@ -214,9 +214,11 @@ function MyProfile({ user }) {
     
     try {
       setUploadingPicture(true);
-      await uploadProfilePicture(file);
+      const updatedUser = await uploadProfilePicture(file);
+      // Update localStorage and state with new user data
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
       alert('Profile picture updated successfully!');
-      window.location.reload(); // Reload to update user data
     } catch (error) {
       alert('Failed to upload profile picture');
     } finally {
@@ -229,8 +231,11 @@ function MyProfile({ user }) {
     
     try {
       await deleteProfilePicture();
+      // Update user data in localStorage and state
+      const updatedUser = { ...user, profile_picture: null };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
       alert('Profile picture deleted successfully!');
-      window.location.reload(); // Reload to update user data
     } catch (error) {
       alert('Failed to delete profile picture');
     }
