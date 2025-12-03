@@ -68,6 +68,10 @@ def update_doctor_profile():
         doctor.latitude = data['latitude']
     if 'longitude' in data:
         doctor.longitude = data['longitude']
+    if 'session_charge' in data:
+        doctor.session_charge = float(data['session_charge']) if data['session_charge'] else 0.0
+    if 'google_maps_link' in data:
+        doctor.google_maps_link = data['google_maps_link']
     
     db.session.commit()
     

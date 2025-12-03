@@ -112,6 +112,7 @@ def book_session(doctor_id):
     if requires_payment and not payment_confirmed:
         return jsonify({
             'requires_payment': True,
+            'amount': doctor.session_charge or 0.0,
             'message': 'Payment required for booking'
         }), 402
     
