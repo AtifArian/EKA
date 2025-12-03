@@ -103,6 +103,18 @@ def book_session(doctor_id):
     if not doctor:
         return jsonify({'error': 'Doctor not found'}), 404
     
+    user = User.query.get(current_user_id)
+    
+    # Check if payment is required
+    requires_payment = user.free_booking_used
+    payment_confirmed = data.get('payment_confirmed', False)
+    
+    if requires_payment and not payment_confirmed:
+        return jsonify({
+            'requires_payment': True,
+            'message': 'Payment required for booking'
+        }), 402
+    
     booking = Booking(
         user_id=current_user_id,
         doctor_id=doctor_id,
@@ -112,13 +124,19 @@ def book_session(doctor_id):
     
     db.session.add(booking)
     
-    user = User.query.get(current_user_id)
+    # Mark free booking as used on first booking
+    if not user.free_booking_used:
+        user.free_booking_used = True
+    
     if user not in doctor.patients:
         doctor.patients.append(user)
     
     db.session.commit()
     
-    return jsonify(booking.to_dict()), 201
+    return jsonify({
+        'booking': booking.to_dict(),
+        'was_free': not requires_payment
+    }), 201
 
 @clinics_bp.route('/<int:doctor_id>/chat-request', methods=['POST'])
 @jwt_required()
