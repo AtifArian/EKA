@@ -8,19 +8,22 @@ function UserProfile() {
   const [journals, setJournals] = useState([]);
 
   useEffect(() => {
+    let mounted = true;
+    const fetchData = async () => {
+      try {
+        const userData = await getUser(id);
+        const journalsData = await getUserJournals(id);
+        if (mounted) {
+          setUser(userData);
+          setJournals(journalsData);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    };
     fetchData();
+    return () => { mounted = false; };
   }, [id]);
-
-  const fetchData = async () => {
-    try {
-      const userData = await getUser(id);
-      setUser(userData);
-      const journalsData = await getUserJournals(id);
-      setJournals(journalsData);
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
 
   if (!user) return <div className="loading">Loading...</div>;
 

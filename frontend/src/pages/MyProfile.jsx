@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   searchUsers, 
   addFriend, 
@@ -14,7 +14,6 @@ import {
   getDoctorProfile,
   updateDoctorProfile,
   getMyArticles,
-  updateArticle,
   deleteArticle,
   uploadProfilePicture,
   deleteProfilePicture
@@ -59,15 +58,7 @@ function MyProfile({ user }) {
 
   const [uploadingPicture, setUploadingPicture] = useState(false);
 
-  useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-    loadData();
-  }, [user, activeTab]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       if (activeTab === 'friends') {
         const data = await getFriends();
@@ -104,7 +95,15 @@ function MyProfile({ user }) {
     } catch (error) {
       console.error('Error loading data:', error);
     }
-  };
+  }, [activeTab, user]);
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    loadData();
+  }, [user, activeTab, loadData, navigate]);
 
   const handleUpdateClinicProfile = async (e) => {
     e.preventDefault();

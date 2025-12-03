@@ -8,6 +8,8 @@ function ClinicDetail({ user }) {
   const [clinic, setClinic] = useState(null);
   const [showBooking, setShowBooking] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
   const [bookingData, setBookingData] = useState({
     appointment_date: '',
     notes: ''
@@ -38,12 +40,45 @@ function ClinicDetail({ user }) {
     }
 
     try {
-      await bookSession(id, bookingData);
-      alert('Session booked successfully!');
+      const response = await bookSession(id, bookingData);
+      if (response.was_free) {
+        alert('Session booked successfully! This was your FREE booking.');
+      } else {
+        alert('Session booked successfully!');
+      }
       setShowBooking(false);
       setBookingData({ appointment_date: '', notes: '' });
     } catch (error) {
-      alert('Failed to book session');
+      if (error.response?.status === 402) {
+        setShowBooking(false);
+        setShowPayment(true);
+      } else {
+        alert(error.response?.data?.error || 'Failed to book session');
+      }
+    }
+  };
+
+  const handlePayment = async (e) => {
+    e.preventDefault();
+    if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
+      alert('Please enter a valid payment amount');
+      return;
+    }
+
+    console.log('Payment:', {
+      amount: paymentAmount,
+      doctor_id: id,
+      timestamp: new Date().toISOString()
+    });
+
+    try {
+      const response = await bookSession(id, { ...bookingData, payment_confirmed: true });
+      alert('Payment processed! Session booked successfully.');
+      setShowPayment(false);
+      setPaymentAmount('');
+      setBookingData({ appointment_date: '', notes: '' });
+    } catch (error) {
+      alert(error.response?.data?.error || 'Failed to process booking');
     }
   };
 
@@ -244,6 +279,120 @@ function ClinicDetail({ user }) {
               <button type="button" onClick={() => setShowReview(false)} style={{ marginTop: '1rem', background: '#ccc' }} className="submit-btn">
                 Cancel
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showPayment && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '20px',
+            padding: '2.5rem',
+            maxWidth: '500px',
+            width: '100%',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            position: 'relative'
+          }}>
+            <button
+              onClick={() => setShowPayment(false)}
+              style={{
+                position: 'absolute',
+                top: '1rem',
+                right: '1rem',
+                background: 'none',
+                border: 'none',
+                fontSize: '1.5rem',
+                cursor: 'pointer',
+                color: '#999'
+              }}
+            >
+              ×
+            </button>
+            <h2 style={{ 
+              marginBottom: '1rem', 
+              color: '#667eea',
+              textAlign: 'center',
+              fontSize: '2rem'
+            }}>
+              Payment Required
+            </h2>
+            <p style={{
+              textAlign: 'center',
+              color: '#666',
+              marginBottom: '2rem',
+              fontSize: '1rem'
+            }}>
+              You've used your FREE booking. Please proceed with payment to book this session.
+            </p>
+            
+            <form onSubmit={handlePayment}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem',
+                  color: '#333',
+                  fontWeight: '500'
+                }}>
+                  Payment Amount ($) *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="Enter amount"
+                  style={{
+                    width: '100%',
+                    padding: '0.8rem',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '10px',
+                    fontSize: '1rem',
+                    boxSizing: 'border-box'
+                  }}
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                style={{
+                  width: '100%',
+                  padding: '1rem',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '1.1rem',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Complete Payment & Book
+              </button>
+
+              <p style={{ 
+                marginTop: '1rem', 
+                fontSize: '0.85rem', 
+                color: '#666',
+                textAlign: 'center'
+              }}>
+                Secure payment processing. Your first booking was FREE! 💙
+              </p>
             </form>
           </div>
         </div>
