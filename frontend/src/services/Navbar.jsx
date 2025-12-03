@@ -8,7 +8,7 @@ function Navbar({ user, onLogout }) {
     <nav className="navbar">
       <Link to="/" className="navbar-brand">
         <div className="navbar-logo">🧠</div>
-        <span>MindCare</span>
+        <span>EKA</span>
       </Link>
       
       <div className="navbar-links">
