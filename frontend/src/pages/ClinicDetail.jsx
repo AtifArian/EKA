@@ -255,7 +255,7 @@ function ClinicDetail({ user }) {
       <div className="comments-section" style={{ marginTop: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2>Reviews ({clinic.reviews.length})</h2>
-          {user && (
+          {user && !user.is_doctor && (
             <button onClick={() => setShowReview(true)} className="submit-btn" style={{ width: 'auto' }}>
               Write Review
             </button>

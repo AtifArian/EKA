@@ -83,6 +83,7 @@ class Doctor(db.Model):
     longitude = db.Column(db.Float)
     session_charge = db.Column(db.Float, default=0.0)
     google_maps_link = db.Column(db.String(500))
+    is_profile_complete = db.Column(db.Boolean, default=False)
     is_verified = db.Column(db.Boolean, default=False)
     verification_document = db.Column(db.String(500))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -108,6 +109,7 @@ class Doctor(db.Model):
             'longitude': self.longitude,
             'session_charge': self.session_charge,
             'google_maps_link': self.google_maps_link,
+            'is_profile_complete': self.is_profile_complete,
             'is_verified': self.is_verified,
             'average_rating': self.average_rating,
             'review_count': len(self.reviews) if hasattr(self, 'reviews') else 0,

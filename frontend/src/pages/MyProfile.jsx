@@ -633,11 +633,11 @@ function MyProfile({ user, setUser }) {
               </div>
 
               <button type="submit" className="submit-btn">
-                {doctorProfile ? 'Update Clinic Profile' : 'Create Clinic Profile'}
+                {doctorProfile?.is_profile_complete ? 'Update Clinic Profile' : 'Create Clinic Profile'}
               </button>
             </form>
 
-            {doctorProfile && (
+            {doctorProfile?.is_profile_complete && (
               <div style={{ 
                 marginTop: '2rem', 
                 padding: '1.5rem', 

@@ -41,52 +41,51 @@ def get_doctor_profile():
 @doctor_required
 def update_doctor_profile():
     """Update doctor's clinic profile"""
-    try:
-        current_user_id = int(get_jwt_identity())
-        doctor = Doctor.query.filter_by(user_id=current_user_id).first()
-        
-        if not doctor:
-            return jsonify({'error': 'Doctor profile not found'}), 404
-        
-        data = request.get_json()
-        print(f"Updating doctor profile with data: {data}")  # DEBUG
-        
-        # Update fields
-        if 'specialization' in data:
-            doctor.specialization = data['specialization']
-        if 'bio' in data:
-            doctor.bio = data['bio']
-        if 'quote' in data:
-            doctor.quote = data['quote']
-        if 'expertise' in data:
-            doctor.expertise = data['expertise']
-        if 'education' in data:
-            doctor.education = data['education']
-        if 'age_group' in data:
-            doctor.age_group = data['age_group']
-        if 'location' in data:
-            doctor.location = data['location']
-        if 'latitude' in data:
-            doctor.latitude = data['latitude']
-        if 'longitude' in data:
-            doctor.longitude = data['longitude']
-        if 'session_charge' in data:
-            doctor.session_charge = float(data['session_charge']) if data['session_charge'] else 0.0
-        if 'google_maps_link' in data:
-            doctor.google_maps_link = data['google_maps_link']
-        
-        db.session.commit()
-        print("Doctor profile updated successfully")  # DEBUG
-        
-        return jsonify({
-            'message': 'Profile updated successfully',
-            'doctor': doctor.to_dict()
-        }), 200
-    except Exception as e:
-        print(f"ERROR updating doctor profile: {str(e)}")
-        print(traceback.format_exc())
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+    current_user_id = int(get_jwt_identity())
+    doctor = Doctor.query.filter_by(user_id=current_user_id).first()
+    
+    if not doctor:
+        return jsonify({'error': 'Doctor profile not found'}), 404
+    
+    data = request.get_json()
+    
+    # Update fields
+    if 'specialization' in data:
+        doctor.specialization = data['specialization']
+    if 'bio' in data:
+        doctor.bio = data['bio']
+    if 'quote' in data:
+        doctor.quote = data['quote']
+    if 'expertise' in data:
+        doctor.expertise = data['expertise']
+    if 'education' in data:
+        doctor.education = data['education']
+    if 'age_group' in data:
+        doctor.age_group = data['age_group']
+    if 'location' in data:
+        doctor.location = data['location']
+    if 'latitude' in data:
+        doctor.latitude = data['latitude']
+    if 'longitude' in data:
+        doctor.longitude = data['longitude']
+    if 'session_charge' in data:
+        doctor.session_charge = float(data['session_charge']) if data['session_charge'] else 0.0
+    if 'google_maps_link' in data:
+        doctor.google_maps_link = data['google_maps_link']
+    
+    # Check if profile is complete (all required fields filled)
+    if (doctor.specialization and doctor.bio and doctor.expertise and 
+        doctor.education and doctor.age_group and doctor.session_charge is not None):
+        doctor.is_profile_complete = True
+    else:
+        doctor.is_profile_complete = False
+    
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Profile updated successfully',
+        'doctor': doctor.to_dict()
+    }), 200
 
 @doctors_bp.route('/patients', methods=['GET'])
 @jwt_required()
