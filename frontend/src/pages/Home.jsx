@@ -41,7 +41,7 @@ function Home({ user }) {
           />
         </div>
         <div className="hero-content">
-          <h1>Welcome to MindCare</h1>
+          <h1>Welcome to EKA</h1>
           <p>
             Your journey to mental wellness starts here. Connect with professional 
             therapists, track your mood, share your thoughts, and build a supportive 
@@ -49,7 +49,7 @@ function Home({ user }) {
           </p>
           <p style={{ marginTop: '1rem' }}>
             Whether you're seeking professional help, looking for resources, or 
-            wanting to journal your experiences, MindCare provides a safe and 
+            wanting to journal your experiences, EKA provides a safe and 
             supportive platform for your mental health journey.
           </p>
         </div>

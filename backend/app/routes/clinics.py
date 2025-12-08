@@ -16,7 +16,8 @@ def get_clinics():
     
     # Get all doctors with profiles
     # Always join with User to get user information
-    query = Doctor.query.join(Doctor.user)
+    # Only show doctors with complete profiles
+    query = Doctor.query.join(Doctor.user).filter(Doctor.is_profile_complete == True)
     
     # Debug: Print all doctors before filtering
     all_doctors = query.all()
@@ -27,12 +28,13 @@ def get_clinics():
     if search:
         query = query.filter(
             (User.full_name.ilike(f'%{search}%')) | 
+            (User.username.ilike(f'%{search}%')) |
             (Doctor.bio.ilike(f'%{search}%'))
         )
     
     if specialization:
         print(f"Filtering by specialization: {specialization}")
-        query = query.filter_by(specialization=specialization)
+        query = query.filter(Doctor.specialization.ilike(f'%{specialization}%'))
     
     doctors = query.all()
     print(f"Found {len(doctors)} doctors after filtering")
@@ -68,6 +70,13 @@ def get_clinic_detail(doctor_id):
 def add_review(doctor_id):
     current_user_id = int(get_jwt_identity())
     data = request.get_json()
+    
+    # Get current user
+    current_user = User.query.get(current_user_id)
+    
+    # Prevent doctors from reviewing any clinic
+    if current_user.is_doctor:
+        return jsonify({'error': 'Doctors cannot review clinics'}), 403
     
     doctor = Doctor.query.get(doctor_id)
     if not doctor:
@@ -112,6 +121,7 @@ def book_session(doctor_id):
     if requires_payment and not payment_confirmed:
         return jsonify({
             'requires_payment': True,
+            'amount': doctor.session_charge or 0.0,
             'message': 'Payment required for booking'
         }), 402
     

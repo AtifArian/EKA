@@ -7,8 +7,17 @@ function Navbar({ user, onLogout }) {
   return (
     <nav className="navbar">
       <Link to="/" className="navbar-brand">
-        <div className="navbar-logo">🧠</div>
-        <span>EKA</span>
+        <div className="navbar-logo">
+          <img 
+            src="/logo.png.png" 
+            alt="EKA Logo" 
+            style={{width: '50px', height: '50px', objectFit: 'contain', borderRadius: '50%'}}
+          />
+        </div>
+        <div>
+          <span>EKA</span>
+          <div style={{fontSize: '0.6em', fontWeight: 'normal'}}>Ease, Kindness, Awareness</div>
+        </div>
       </Link>
       
       <div className="navbar-links">

@@ -50,7 +50,7 @@ function App() {
         <div className="App">
           <Navbar user={user} onLogout={handleLogout} />
           
-          {user && <MoodTracker />}
+          {user && !user.is_doctor && <MoodTracker />}
           
           <Routes>
             <Route path="/" element={<Home user={user} />} />
@@ -67,7 +67,7 @@ function App() {
               path="/profile" 
               element={
                 <ProtectedRoute user={user}>
-                  <MyProfile user={user} />
+                  <MyProfile user={user} setUser={setUser} />
                 </ProtectedRoute>
               } 
             />

@@ -3,11 +3,17 @@ import { useNavigate } from 'react-router-dom';
 
 function ClinicTile({ clinic }) {
   const navigate = useNavigate();
+  
+  // Construct full URL for profile picture
+  const API_BASE = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5050';
+  const profilePictureUrl = clinic.user.profile_picture 
+    ? `${API_BASE.replace('/api', '')}${clinic.user.profile_picture}`
+    : 'https://via.placeholder.com/200x200?text=Doctor';
 
   return (
     <div className="tile" onClick={() => navigate(`/clinics/${clinic.id}`)}>
       <img 
-        src={clinic.user.profile_picture || 'https://via.placeholder.com/200x200?text=Doctor'} 
+        src={profilePictureUrl} 
         alt={clinic.user.full_name}
         className="tile-image"
       />
