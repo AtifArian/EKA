@@ -87,16 +87,6 @@ def create_app(config_class=Config):
         print(f"Missing token: {error}")  # DEBUG
         return {"error": "Missing token"}, 422
     
-    # Additional CORS headers for all responses
-    @app.after_request
-    def after_request(response):
-        origin = os.environ.get('FRONTEND_URL', 'https://eka-eight.vercel.app')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response
-    
     # Create upload folder - handle potential permission errors in production
     try:
         upload_folder = app.config['UPLOAD_FOLDER']
