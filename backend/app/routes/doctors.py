@@ -68,6 +68,17 @@ def update_doctor_profile():
         doctor.latitude = data['latitude']
     if 'longitude' in data:
         doctor.longitude = data['longitude']
+    if 'session_charge' in data:
+        doctor.session_charge = float(data['session_charge']) if data['session_charge'] else 0.0
+    if 'google_maps_link' in data:
+        doctor.google_maps_link = data['google_maps_link']
+    
+    # Check if profile is complete (all required fields filled)
+    if (doctor.specialization and doctor.bio and doctor.expertise and 
+        doctor.education and doctor.age_group and doctor.session_charge is not None):
+        doctor.is_profile_complete = True
+    else:
+        doctor.is_profile_complete = False
     
     db.session.commit()
     

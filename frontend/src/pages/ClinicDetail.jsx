@@ -8,6 +8,8 @@ function ClinicDetail({ user }) {
   const [clinic, setClinic] = useState(null);
   const [showBooking, setShowBooking] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
   const [bookingData, setBookingData] = useState({
     appointment_date: '',
     notes: ''
@@ -38,12 +40,42 @@ function ClinicDetail({ user }) {
     }
 
     try {
-      await bookSession(id, bookingData);
-      alert('Session booked successfully!');
+      const response = await bookSession(id, bookingData);
+      if (response.was_free) {
+        alert('Session booked successfully! This was your FREE booking.');
+      } else {
+        alert('Session booked successfully!');
+      }
       setShowBooking(false);
       setBookingData({ appointment_date: '', notes: '' });
     } catch (error) {
-      alert('Failed to book session');
+      if (error.response?.status === 402) {
+        const amount = error.response?.data?.amount || clinic?.session_charge || 0;
+        setPaymentAmount(amount.toString());
+        setShowBooking(false);
+        setShowPayment(true);
+      } else {
+        alert(error.response?.data?.error || 'Failed to book session');
+      }
+    }
+  };
+
+  const handlePayment = async (e) => {
+    e.preventDefault();
+    if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
+      alert('Invalid payment amount');
+      return;
+    }
+
+    try {
+      const response = await bookSession(id, { ...bookingData, payment_confirmed: true });
+      alert('Payment processed! Session booked successfully.');
+      setShowPayment(false);
+      setPaymentAmount('');
+      setBookingData({ appointment_date: '', notes: '' });
+      fetchClinicDetail();
+    } catch (error) {
+      alert(error.response?.data?.error || 'Failed to process booking');
     }
   };
 
@@ -68,12 +100,74 @@ function ClinicDetail({ user }) {
     return <div className="loading">Loading...</div>;
   }
 
+  // Construct full URL for profile picture
+  const API_BASE = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5050';
+  const profilePictureUrl = clinic.user.profile_picture 
+    ? `${API_BASE.replace('/api', '')}${clinic.user.profile_picture}`
+    : 'https://via.placeholder.com/500x500?text=Doctor';
+
+  // Convert Google Maps link to embeddable format
+  const getEmbedUrl = (link) => {
+    if (!link) return null;
+    
+    try {
+      // If already an embed link, return as is
+      if (link.includes('/embed')) return link;
+      
+      // Extract coordinates from various Google Maps URL formats
+      // Format 1: https://www.google.com/maps/place/.../@lat,lng,zoom
+      let match = link.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (match) {
+        const lat = match[1];
+        const lng = match[2];
+        return `https://maps.google.com/maps?q=${lat},${lng}&hl=es;z=14&output=embed`;
+      }
+      
+      // Format 2: https://maps.google.com/?q=lat,lng
+      match = link.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (match) {
+        const lat = match[1];
+        const lng = match[2];
+        return `https://maps.google.com/maps?q=${lat},${lng}&hl=es;z=14&output=embed`;
+      }
+      
+      // Format 3: https://goo.gl/maps/... or https://maps.app.goo.gl/...
+      // These need to be expanded first, but we can try using the place extraction
+      if (link.includes('goo.gl')) {
+        // Extract any coordinates if present in the URL after redirect
+        return `https://maps.google.com/maps?q=${encodeURIComponent(link)}&output=embed`;
+      }
+      
+      // Format 4: Extract place name or address from URL
+      const placeMatch = link.match(/\/place\/([^\/]+)/);
+      if (placeMatch) {
+        const place = decodeURIComponent(placeMatch[1]);
+        return `https://maps.google.com/maps?q=${encodeURIComponent(place)}&output=embed`;
+      }
+      
+      // Fallback: try to extract any q parameter
+      const urlObj = new URL(link);
+      const qParam = urlObj.searchParams.get('q');
+      if (qParam) {
+        return `https://maps.google.com/maps?q=${encodeURIComponent(qParam)}&output=embed`;
+      }
+      
+    } catch (e) {
+      console.error('Error parsing Google Maps URL:', e);
+    }
+    
+    // Last resort: use the link as a query (won't work for all formats)
+    return `https://maps.google.com/maps?q=${encodeURIComponent(link)}&output=embed`;
+  };
+
+  const embedUrl = clinic.google_maps_link ? getEmbedUrl(clinic.google_maps_link) : null;
+
   return (
     <div className="container">
       <div className="hero-section">
         <div className="hero-image">
           <img 
-            src={clinic.user.profile_picture || 'https://via.placeholder.com/500x500?text=Doctor'}
+            src={profilePictureUrl}
             alt={clinic.user.full_name}
           />
         </div>
@@ -82,6 +176,20 @@ function ClinicDetail({ user }) {
           <p style={{ fontSize: '1.2rem', color: '#7F7FD5', fontWeight: '600', marginBottom: '1rem' }}>
             {clinic.specialization}
           </p>
+          {clinic.session_charge > 0 && (
+            <div style={{
+              display: 'inline-block',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              padding: '0.5rem 1.5rem',
+              borderRadius: '25px',
+              fontSize: '1.1rem',
+              fontWeight: '600',
+              marginBottom: '1rem'
+            }}>
+              ${clinic.session_charge} per session
+            </div>
+          )}
           <blockquote style={{ 
             fontStyle: 'italic', 
             color: '#666', 
@@ -111,7 +219,7 @@ function ClinicDetail({ user }) {
         </div>
       </div>
 
-      {clinic.latitude && clinic.longitude && (
+      {(embedUrl || (clinic.latitude && clinic.longitude)) && (
         <div style={{ 
           background: 'white', 
           borderRadius: '20px', 
@@ -119,21 +227,35 @@ function ClinicDetail({ user }) {
           marginTop: '2rem',
           boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
         }}>
-          <h2 style={{ marginBottom: '1rem' }}>Location</h2>
-          <iframe
-            width="100%"
-            height="400"
-            frameBorder="0"
-            src={`https://www.google.com/maps?q=${clinic.latitude},${clinic.longitude}&z=15&output=embed`}
-            style={{ borderRadius: '15px' }}
-          ></iframe>
+          <h2 style={{ marginBottom: '1rem' }}>Clinic Location</h2>
+          {embedUrl ? (
+            <iframe
+              width="100%"
+              height="400"
+              frameBorder="0"
+              src={embedUrl}
+              allowFullScreen
+              style={{ borderRadius: '15px', border: '0' }}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            ></iframe>
+          ) : (
+            <iframe
+              width="100%"
+              height="400"
+              frameBorder="0"
+              src={`https://www.google.com/maps?q=${clinic.latitude},${clinic.longitude}&z=15&output=embed`}
+              style={{ borderRadius: '15px', border: '0' }}
+              loading="lazy"
+            ></iframe>
+          )}
         </div>
       )}
 
       <div className="comments-section" style={{ marginTop: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2>Reviews ({clinic.reviews.length})</h2>
-          {user && (
+          {user && !user.is_doctor && (
             <button onClick={() => setShowReview(true)} className="submit-btn" style={{ width: 'auto' }}>
               Write Review
             </button>
@@ -244,6 +366,120 @@ function ClinicDetail({ user }) {
               <button type="button" onClick={() => setShowReview(false)} style={{ marginTop: '1rem', background: '#ccc' }} className="submit-btn">
                 Cancel
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showPayment && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '20px',
+            padding: '2.5rem',
+            maxWidth: '500px',
+            width: '100%',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            position: 'relative'
+          }}>
+            <button
+              onClick={() => setShowPayment(false)}
+              style={{
+                position: 'absolute',
+                top: '1rem',
+                right: '1rem',
+                background: 'none',
+                border: 'none',
+                fontSize: '1.5rem',
+                cursor: 'pointer',
+                color: '#999'
+              }}
+            >
+              ×
+            </button>
+            <h2 style={{ 
+              marginBottom: '1rem', 
+              color: '#667eea',
+              textAlign: 'center',
+              fontSize: '2rem'
+            }}>
+              Payment Required
+            </h2>
+            <p style={{
+              textAlign: 'center',
+              color: '#666',
+              marginBottom: '2rem',
+              fontSize: '1rem'
+            }}>
+              You've used your FREE booking. Please proceed with payment to book this session.
+            </p>
+            
+            <form onSubmit={handlePayment}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem',
+                  color: '#333',
+                  fontWeight: '500'
+                }}>
+                  Session Charge
+                </label>
+                <input
+                  type="text"
+                  value={`$${paymentAmount}`}
+                  readOnly
+                  style={{
+                    width: '100%',
+                    padding: '0.8rem',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '10px',
+                    fontSize: '1.2rem',
+                    fontWeight: '600',
+                    boxSizing: 'border-box',
+                    background: '#f5f5f5',
+                    textAlign: 'center',
+                    color: '#667eea'
+                  }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                style={{
+                  width: '100%',
+                  padding: '1rem',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '1.1rem',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Complete Payment & Book
+              </button>
+
+              <p style={{ 
+                marginTop: '1rem', 
+                fontSize: '0.85rem', 
+                color: '#666',
+                textAlign: 'center'
+              }}>
+                Secure payment processing. Your first booking was FREE! 💙
+              </p>
             </form>
           </div>
         </div>

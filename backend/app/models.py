@@ -25,6 +25,7 @@ class User(db.Model):
     profile_picture = db.Column(db.String(255))
     is_doctor = db.Column(db.Boolean, default=False)
     google_id = db.Column(db.String(255), unique=True)
+    free_booking_used = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
@@ -49,12 +50,21 @@ class User(db.Model):
         return bcrypt.check_password_hash(self.password_hash, password)
     
     def to_dict(self):
+        # Convert profile_picture path to URL
+        profile_picture_url = None
+        if self.profile_picture:
+            # Remove 'uploads/' prefix if present and construct URL
+            path = self.profile_picture.replace('\\', '/')
+            if path.startswith('uploads/'):
+                path = path[8:]  # Remove 'uploads/' prefix
+            profile_picture_url = f'/uploads/{path}'
+        
         return {
             'id': self.id,
             'username': self.username,
             'email': self.email,
             'full_name': self.full_name,
-            'profile_picture': self.profile_picture,
+            'profile_picture': profile_picture_url,
             'is_doctor': self.is_doctor,
             'created_at': self.created_at.isoformat()
         }
@@ -71,6 +81,9 @@ class Doctor(db.Model):
     location = db.Column(db.String(200))
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)
+    session_charge = db.Column(db.Float, default=0.0)
+    google_maps_link = db.Column(db.String(500))
+    is_profile_complete = db.Column(db.Boolean, default=False)
     is_verified = db.Column(db.Boolean, default=False)
     verification_document = db.Column(db.String(500))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -94,6 +107,9 @@ class Doctor(db.Model):
             'location': self.location,
             'latitude': self.latitude,
             'longitude': self.longitude,
+            'session_charge': self.session_charge,
+            'google_maps_link': self.google_maps_link,
+            'is_profile_complete': self.is_profile_complete,
             'is_verified': self.is_verified,
             'average_rating': self.average_rating,
             'review_count': len(self.reviews) if hasattr(self, 'reviews') else 0,
