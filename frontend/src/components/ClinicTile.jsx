@@ -5,9 +5,9 @@ function ClinicTile({ clinic }) {
   const navigate = useNavigate();
   
   // Construct full URL for profile picture
-  const API_BASE = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5050';
+  const API_BASE = process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050';
   const profilePictureUrl = clinic.user.profile_picture 
-    ? `${API_BASE.replace('/api', '')}${clinic.user.profile_picture}`
+    ? `${API_BASE}${clinic.user.profile_picture}`
     : 'https://via.placeholder.com/200x200?text=Doctor';
 
   return (

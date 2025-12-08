@@ -1,4 +1,4 @@
-Flask
+flask
 flask-sqlalchemy
 flask-cors
 flask-jwt-extended
@@ -8,3 +8,5 @@ textblob
 numpy
 google-auth
 google-generativeai
+gunicorn
+psycopg2-binary

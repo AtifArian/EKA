@@ -1,6 +1,14 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5050/api';
+// Normalize API base URL to ensure it always includes '/api'
+let API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5050/api';
+if (API_URL) {
+  const hasApiSegment = /\/api\/?$/.test(API_URL) || /\/api\//.test(API_URL);
+  if (!hasApiSegment) {
+    // Append '/api' safely without duplicating slashes
+    API_URL = API_URL.replace(/\/$/, '') + '/api';
+  }
+}
 
 const api = axios.create({
   baseURL: API_URL,
