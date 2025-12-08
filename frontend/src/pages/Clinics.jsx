@@ -60,7 +60,7 @@ function Clinics() {
     return groups;
   }, {});
 
-  const API_BASE = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5050';
+  const API_BASE = process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050';
 
   return (
     <div className="container" style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>

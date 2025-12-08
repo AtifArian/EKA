@@ -48,7 +48,7 @@ function UserProfile() {
           }}>
             {user.profile_picture ? (
               <img 
-                src={`http://127.0.0.1:5050/${user.profile_picture}`}
+                src={`${process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050'}/${user.profile_picture}`}
                 alt={user.username}
                 style={{
                   width: '100%',
