@@ -34,7 +34,7 @@ def create_app(config_class=Config):
     bcrypt.init_app(app)
     CORS(app, resources={r"/api/*": {
         "origins": [
-            "http://localhost:3000",
+            "https://eka-eight.vercel.app",
             "http://127.0.0.1:3000",
             "http://localhost:5173",
             "http://127.0.0.1:5173",
