@@ -60,14 +60,17 @@ def create_app(config_class=Config):
     frontend_url = os.environ.get('FRONTEND_URL')
     if frontend_url and frontend_url not in allowed_origins:
         allowed_origins.append(frontend_url)
-    
-    CORS(app, resources={r"/api/*": {
+    CORS(
+    app,
+    resources={r"/*": {
         "origins": allowed_origins,
         "allow_headers": ["Content-Type", "Authorization"],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "expose_headers": ["Content-Type", "Authorization"],
         "supports_credentials": True
-    }})
+    }}
+)
+
     jwt = JWTManager(app)
     
     @jwt.invalid_token_loader
