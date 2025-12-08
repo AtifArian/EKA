@@ -48,6 +48,7 @@ def create_app(config_class=Config):
     # CORS configuration - allow frontend from environment variable or defaults
     allowed_origins = [
         "https://eka-eight.vercel.app",
+        "https://*.vercel.app",
         "http://127.0.0.1:3000",
         "http://localhost:3000",
         "http://localhost:5173",
