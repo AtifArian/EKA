@@ -16,12 +16,12 @@ function Navbar({ user, onLogout }) {
           <img 
             src="/logo.png.png" 
             alt="EKA Logo" 
-            style={{width: '50px', height: '50px', objectFit: 'contain', borderRadius: '50%'}}
+            style={{width: '65px', height: '65px', objectFit: 'contain', borderRadius: '50%'}}
           />
         </div>
         <div>
-          <span>EKA</span>
-          <div style={{fontSize: '0.6em', fontWeight: 'normal'}}>Ease, Kindness, Awareness</div>
+          <span style={{background: 'linear-gradient(to right, #5871b1 0%, #838bb7 50%, #ada5bc 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text'}}>EKA</span>
+          <div style={{fontSize: '0.6em', fontWeight: 'normal', background: 'linear-gradient(to right, #5871b1 0%, #838bb7 50%, #ada5bc 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text'}}>Ease. Kindness. Awareness</div>
         </div>
       </Link>
       
