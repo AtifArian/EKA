@@ -48,7 +48,6 @@ def create_app(config_class=Config):
     # CORS configuration - allow frontend from environment variable or defaults
     allowed_origins = [
         "https://eka-eight.vercel.app",
-        "https://*.vercel.app",
         "http://127.0.0.1:3000",
         "http://localhost:3000",
         "http://localhost:5173",
@@ -61,17 +60,16 @@ def create_app(config_class=Config):
     frontend_url = os.environ.get('FRONTEND_URL')
     if frontend_url and frontend_url not in allowed_origins:
         allowed_origins.append(frontend_url)
-    CORS(
-    app,
-    resources={r"/*": {
-        "origins": allowed_origins,
-        "allow_headers": ["Content-Type", "Authorization"],
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "expose_headers": ["Content-Type", "Authorization"],
-        "supports_credentials": True
-    }}
-)
-
+    
+    # Configure CORS with proper settings for production
+    CORS(app, 
+         origins=allowed_origins,
+         allow_headers=["Content-Type", "Authorization"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         expose_headers=["Content-Type", "Authorization"],
+         supports_credentials=True,
+         max_age=3600)
+    
     jwt = JWTManager(app)
     
     @jwt.invalid_token_loader
@@ -88,6 +86,16 @@ def create_app(config_class=Config):
     def missing_token_callback(error):
         print(f"Missing token: {error}")  # DEBUG
         return {"error": "Missing token"}, 422
+    
+    # Additional CORS headers for all responses
+    @app.after_request
+    def after_request(response):
+        origin = os.environ.get('FRONTEND_URL', 'https://eka-eight.vercel.app')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
     
     # Create upload folder - handle potential permission errors in production
     try:
