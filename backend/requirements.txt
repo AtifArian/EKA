@@ -9,3 +9,4 @@ numpy
 google-auth
 google-generativeai
 gunicorn
+psycopg2-binary
