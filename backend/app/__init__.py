@@ -62,8 +62,11 @@ def create_app(config_class=Config):
         allowed_origins.append(frontend_url)
     
     # Configure CORS with proper settings for production
+    # For local testing with Postman, use origins="*"
+    is_local_dev = os.environ.get('FLASK_ENV') == 'development' or not database_url
+    
     CORS(app, 
-         origins=allowed_origins,
+         origins="*" if is_local_dev else allowed_origins,
          allow_headers=["Content-Type", "Authorization"],
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
          expose_headers=["Content-Type", "Authorization"],
