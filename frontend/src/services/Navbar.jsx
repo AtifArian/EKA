@@ -21,6 +21,7 @@ function Navbar({ user, onLogout }) {
       </Link>
       
       <div className="navbar-links">
+        <Link to="/">Home</Link>
         <Link to="/clinics">Clinics</Link>
         <Link to="/articles">Articles</Link>
         <Link to="/journals">Journals</Link>
