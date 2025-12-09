@@ -19,6 +19,7 @@ import {
   deleteProfilePicture
 } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import MapLocationPicker from '../components/MapLocationPicker';
 
 function MyProfile({ user, setUser }) {
   const navigate = useNavigate();
@@ -55,7 +56,9 @@ function MyProfile({ user, setUser }) {
     age_group: '',
     location: '',
     session_charge: '',
-    google_maps_link: ''
+    google_maps_link: '',
+    latitude: null,
+    longitude: null
   });
 
   const [uploadingPicture, setUploadingPicture] = useState(false);
@@ -80,6 +83,7 @@ function MyProfile({ user, setUser }) {
       } else if (activeTab === 'clinic-profile' && user.is_doctor) {
         try {
           const profile = await getDoctorProfile();
+          console.log('Loaded doctor profile:', profile);
           setDoctorProfile(profile);
           setClinicForm({
             specialization: profile.specialization || '',
@@ -90,10 +94,18 @@ function MyProfile({ user, setUser }) {
             age_group: profile.age_group || '',
             location: profile.location || '',
             session_charge: profile.session_charge || '',
-            google_maps_link: profile.google_maps_link || ''
+            google_maps_link: profile.google_maps_link || '',
+            latitude: profile.latitude || null,
+            longitude: profile.longitude || null
+          });
+          console.log('Set clinic form to:', {
+            specialization: profile.specialization || '',
+            bio: profile.bio || '',
+            quote: profile.quote || '',
+            session_charge: profile.session_charge || ''
           });
         } catch (error) {
-          console.log('No doctor profile yet');
+          console.log('No doctor profile yet:', error);
         }
       }
     } catch (error) {
@@ -112,16 +124,11 @@ function MyProfile({ user, setUser }) {
   const handleUpdateClinicProfile = async (e) => {
     e.preventDefault();
     try {
-      // Extract URL from iframe code if user pasted embed code instead of URL
-      let googleMapsLink = clinicForm.google_maps_link;
-      if (googleMapsLink && googleMapsLink.includes('<iframe')) {
-        const srcMatch = googleMapsLink.match(/src=["']([^"']+)["']/);
-        if (srcMatch) {
-          googleMapsLink = srcMatch[1];
-        }
-      }
-      
-      const dataToSubmit = { ...clinicForm, google_maps_link: googleMapsLink };
+      const dataToSubmit = {
+        ...clinicForm,
+        latitude: clinicForm.latitude,
+        longitude: clinicForm.longitude
+      };
       await updateDoctorProfile(dataToSubmit);
       alert('Clinic profile updated successfully!');
       loadData();
@@ -618,19 +625,20 @@ function MyProfile({ user, setUser }) {
                 />
               </div>
 
-              <div className="form-group">
-                <label>Google Maps Link (Clinic Location)</label>
-                <input
-                  type="text"
-                  value={clinicForm.google_maps_link}
-                  onChange={(e) => setClinicForm({...clinicForm, google_maps_link: e.target.value})}
-                  placeholder="https://maps.google.com/... or paste embed code"
-                />
-                <small style={{color: '#666', fontSize: '0.85rem', marginTop: '0.3rem', display: 'block'}}>
-                  <strong>Option 1:</strong> Search your clinic on Google Maps → Click "Share" → "Embed a map" → Copy the URL from the iframe src<br/>
-                  <strong>Option 2:</strong> Or just paste the regular share link (e.g., https://maps.app.goo.gl/...)
-                </small>
-              </div>
+              <MapLocationPicker
+                initialPosition={
+                  clinicForm.latitude && clinicForm.longitude
+                    ? { lat: clinicForm.latitude, lng: clinicForm.longitude }
+                    : null
+                }
+                onLocationSelect={(position) => {
+                  setClinicForm({
+                    ...clinicForm,
+                    latitude: position.lat,
+                    longitude: position.lng
+                  });
+                }}
+              />
 
               <button type="submit" className="submit-btn">
                 {doctorProfile?.is_profile_complete ? 'Update Clinic Profile' : 'Create Clinic Profile'}
