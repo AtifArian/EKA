@@ -126,6 +126,9 @@ class MoodEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     mood_level = db.Column(db.Integer, nullable=False)  # 1-5
+    energy_level = db.Column(db.Integer)  # 1-5
+    stress_level = db.Column(db.Integer)  # 1-5
+    social_connection = db.Column(db.Integer)  # 1-5
     date = db.Column(db.Date, nullable=False, default=datetime.utcnow().date)
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -136,6 +139,9 @@ class MoodEntry(db.Model):
             'id': self.id,
             'user_id': self.user_id,
             'mood_level': self.mood_level,
+            'energy_level': self.energy_level,
+            'stress_level': self.stress_level,
+            'social_connection': self.social_connection,
             'date': self.date.isoformat() if self.date else None,
             'notes': self.notes,
             'created_at': self.created_at.isoformat() if self.created_at else None
