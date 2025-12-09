@@ -44,6 +44,28 @@ def check_today_mood():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
+@mood_bp.route('', methods=['GET'])
+@jwt_required()
+def get_mood_entries():
+    """Get user's mood entries"""
+    try:
+        current_user_id = int(get_jwt_identity())
+        days = request.args.get('days', 30, type=int)
+        
+        start_date = datetime.utcnow().date() - timedelta(days=days)
+        
+        moods = MoodEntry.query.filter(
+            MoodEntry.user_id == current_user_id,
+            MoodEntry.date >= start_date
+        ).order_by(MoodEntry.date.desc()).all()
+        
+        return jsonify([mood.to_dict() for mood in moods]), 200
+        
+    except Exception as e:
+        print(f"ERROR in get_mood_entries: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
 @mood_bp.route('', methods=['POST'])
 @jwt_required()
 def create_mood_entry():
@@ -55,8 +77,7 @@ def create_mood_entry():
         mood_level = data.get('mood_level')
         if not mood_level or mood_level not in [1, 2, 3, 4, 5]:
             return jsonify({'error': 'Invalid mood level (1-5)'}), 400
-        
-        # Optional follow-up answers
+
         energy_level = data.get('energy_level')
         stress_level = data.get('stress_level')
         social_connection = data.get('social_connection')
@@ -97,26 +118,4 @@ def create_mood_entry():
         print(f"ERROR in create_mood_entry: {str(e)}")
         print(traceback.format_exc())
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-@mood_bp.route('', methods=['GET'])
-@jwt_required()
-def get_mood_entries():
-    """Get user's mood entries"""
-    try:
-        current_user_id = int(get_jwt_identity())
-        days = request.args.get('days', 30, type=int)
-        
-        start_date = datetime.utcnow().date() - timedelta(days=days)
-        
-        moods = MoodEntry.query.filter(
-            MoodEntry.user_id == current_user_id,
-            MoodEntry.date >= start_date
-        ).order_by(MoodEntry.date.desc()).all()
-        
-        return jsonify([mood.to_dict() for mood in moods]), 200
-        
-    except Exception as e:
-        print(f"ERROR in get_mood_entries: {str(e)}")
-        print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
