@@ -23,6 +23,7 @@ import UserProfile from './pages/UserProfile';
 
 function App() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -30,6 +31,7 @@ function App() {
     if (token && userData) {
       setUser(JSON.parse(userData));
     }
+    setLoading(false);
   }, []);
 
   const handleLogin = (userData, token) => {
@@ -43,6 +45,12 @@ function App() {
     localStorage.removeItem('user');
     setUser(null);
   };
+
+  if (loading) {
+    return (
+      <div className="loading">Loading...</div>
+    );
+  }
 
   return (
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || "dummy-client-id"}>
