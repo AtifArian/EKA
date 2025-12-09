@@ -13,9 +13,9 @@ function Navbar({ user, onLogout }) {
     <nav className="navbar">
       <Link to="/" className="navbar-brand">
         <div className="navbar-logo">
-          <img 
-            src="/logo.png.png" 
-            alt="EKA Logo" 
+          <img
+            src="/logo.png.png"
+            alt="EKA Logo"
             style={{width: '65px', height: '65px', objectFit: 'contain', borderRadius: '50%'}}
           />
         </div>
@@ -24,12 +24,13 @@ function Navbar({ user, onLogout }) {
           <div style={{fontSize: '0.6em', fontWeight: 'normal', background: 'linear-gradient(to right, #5871b1 0%, #838bb7 50%, #ada5bc 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text'}}>Ease. Kindness. Awareness</div>
         </div>
       </Link>
-      
+
       <div className="navbar-links">
+        <Link to="/">Home</Link>
         <Link to="/clinics">Clinics</Link>
         <Link to="/articles">Articles</Link>
         <Link to="/journals">Journals</Link>
-        
+
         {user ? (
           <>
             <Link to="/profile">MyProfile</Link>
