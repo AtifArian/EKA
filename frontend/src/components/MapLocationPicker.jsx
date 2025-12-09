@@ -29,13 +29,19 @@ function MapLocationPicker({ initialPosition, onLocationSelect }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const initialMount = useRef(true);
 
   useEffect(() => {
-    // Notify parent component when position changes
+    // Skip calling onLocationSelect on initial mount to avoid infinite loop
+    if (initialMount.current) {
+      initialMount.current = false;
+      return;
+    }
+    // Notify parent component when position changes (user interaction)
     if (onLocationSelect) {
       onLocationSelect(position);
     }
-  }, [position, onLocationSelect]);
+  }, [position]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;

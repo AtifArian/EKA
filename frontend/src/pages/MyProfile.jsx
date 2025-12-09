@@ -83,6 +83,7 @@ function MyProfile({ user, setUser }) {
       } else if (activeTab === 'clinic-profile' && user.is_doctor) {
         try {
           const profile = await getDoctorProfile();
+          console.log('Loaded doctor profile:', profile);
           setDoctorProfile(profile);
           setClinicForm({
             specialization: profile.specialization || '',
@@ -97,8 +98,14 @@ function MyProfile({ user, setUser }) {
             latitude: profile.latitude || null,
             longitude: profile.longitude || null
           });
+          console.log('Set clinic form to:', {
+            specialization: profile.specialization || '',
+            bio: profile.bio || '',
+            quote: profile.quote || '',
+            session_charge: profile.session_charge || ''
+          });
         } catch (error) {
-          console.log('No doctor profile yet');
+          console.log('No doctor profile yet:', error);
         }
       }
     } catch (error) {

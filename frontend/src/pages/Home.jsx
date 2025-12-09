@@ -91,28 +91,6 @@ function Home({ user }) {
       </div>
 
       <div className="container">
-        <div className="hero-section">
-          <div className="hero-image">
-            <img 
-              src="https://via.placeholder.com/500x400?text=Mental+Wellness" 
-              alt="Mental Wellness"
-            />
-          </div>
-          <div className="hero-content">
-            <h1>Welcome to EKA</h1>
-            <p>
-              Your journey to mental wellness starts here. Connect with professional 
-              therapists, track your mood, share your thoughts, and build a supportive 
-              community. We're here to help you every step of the way.
-            </p>
-            <p style={{ marginTop: '1rem' }}>
-              Whether you're seeking professional help, looking for resources, or 
-              wanting to journal your experiences, EKA provides a safe and 
-              supportive platform for your mental health journey.
-            </p>
-          </div>
-        </div>
-
         <div 
           onClick={() => navigate('/articles')}
           style={{
