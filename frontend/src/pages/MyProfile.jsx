@@ -431,6 +431,36 @@ function MyProfile({ user, setUser }) {
               >
                 Friends
               </button>
+              <button
+                onClick={() => setActiveTab('my-doctors')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '1rem 1.5rem',
+                  fontSize: '1.05rem',
+                  fontWeight: '600',
+                  color: activeTab === 'my-doctors' ? '#7F7FD5' : '#999',
+                  borderBottom: activeTab === 'my-doctors' ? '3px solid #7F7FD5' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                👨‍⚕️ My Doctors
+              </button>
+              <button
+                onClick={() => setActiveTab('inbox')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '1rem 1.5rem',
+                  fontSize: '1.05rem',
+                  fontWeight: '600',
+                  color: activeTab === 'inbox' ? '#7F7FD5' : '#999',
+                  borderBottom: activeTab === 'inbox' ? '3px solid #7F7FD5' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                📧 My Inbox
+              </button>
             </>
           )}
           
@@ -480,6 +510,21 @@ function MyProfile({ user, setUser }) {
                 }}
               >
                 💬 Chat Requests
+              </button>
+              <button
+                onClick={() => setActiveTab('chat-inbox')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '1rem 1.5rem',
+                  fontSize: '1.05rem',
+                  fontWeight: '600',
+                  color: activeTab === 'chat-inbox' ? '#7F7FD5' : '#999',
+                  borderBottom: activeTab === 'chat-inbox' ? '3px solid #7F7FD5' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                📧 Chat Inbox
               </button>
               <button
                 onClick={() => setActiveTab('my-articles')}
@@ -1152,6 +1197,208 @@ function MyProfile({ user, setUser }) {
                 <p style={{ textAlign: 'center', color: '#999', padding: '2rem' }}>
                   No friends yet. Search and add some!
                 </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* My Doctors Tab (User) */}
+        {activeTab === 'my-doctors' && !user.is_doctor && (
+          <div>
+            <h2 style={{ marginBottom: '1.5rem' }}>👨‍⚕️ My Doctors</h2>
+            <p style={{ marginBottom: '2rem', color: '#666' }}>Doctors you have an active chat with</p>
+            
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+              gap: '1.5rem'
+            }}>
+              {patients && patients.length > 0 ? (
+                patients.map((doctor) => (
+                  <div 
+                    key={doctor.id}
+                    style={{
+                      background: 'white',
+                      border: '2px solid #e0e0e0',
+                      borderRadius: '15px',
+                      padding: '1.5rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease'
+                    }}
+                  >
+                    <h3 style={{ marginBottom: '0.5rem' }}>{doctor.user?.full_name || 'Dr. ' + doctor.user?.username}</h3>
+                    <p style={{ color: '#7F7FD5', marginBottom: '0.5rem' }}>{doctor.specialization}</p>
+                    {doctor.bio && <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>{doctor.bio}</p>}
+                    <button
+                      onClick={() => navigate(`/chat/${doctor.id}`)}
+                      style={{
+                        width: '100%',
+                        padding: '0.8rem',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        fontWeight: '600'
+                      }}
+                    >
+                      💬 Chat Now
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: '#999' }}>
+                  <p>No doctors yet. Browse clinics to start chatting!</p>
+                  <button 
+                    onClick={() => navigate('/clinics')}
+                    style={{
+                      padding: '0.8rem 1.5rem',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      marginTop: '1rem'
+                    }}
+                  >
+                    Browse Clinics
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* My Inbox Tab (User) */}
+        {activeTab === 'inbox' && !user.is_doctor && (
+          <div>
+            <h2 style={{ marginBottom: '1.5rem' }}>📧 My Inbox</h2>
+            <p style={{ marginBottom: '2rem', color: '#666' }}>All messages from doctors</p>
+            
+            <div style={{
+              background: 'white',
+              borderRadius: '15px',
+              border: '2px solid #e0e0e0',
+              minHeight: '400px'
+            }}>
+              {chatRequests && chatRequests.length > 0 ? (
+                <div>
+                  {chatRequests.map((request) => (
+                    <div
+                      key={request.id}
+                      style={{
+                        padding: '1rem',
+                        borderBottom: '1px solid #e0e0e0',
+                        cursor: 'pointer',
+                        transition: 'background 0.3s'
+                      }}
+                      onClick={() => navigate(`/chat/${request.id}`)}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                        <div style={{ flex: 1 }}>
+                          <h4 style={{ margin: '0 0 0.5rem 0' }}>
+                            {request.to_doctor?.user?.full_name || 'Dr. ' + request.to_doctor?.user?.username}
+                          </h4>
+                          <p style={{ fontSize: '0.9rem', color: '#666', margin: '0 0 0.5rem 0' }}>
+                            {request.to_doctor?.specialization}
+                          </p>
+                          <p style={{ fontSize: '0.85rem', color: '#999' }}>
+                            {request.message}
+                          </p>
+                        </div>
+                        <span style={{
+                          padding: '0.4rem 0.8rem',
+                          background: request.status === 'accepted' ? '#d4edda' : '#fff3cd',
+                          color: request.status === 'accepted' ? '#155724' : '#856404',
+                          borderRadius: '20px',
+                          fontSize: '0.8rem',
+                          fontWeight: '600'
+                        }}>
+                          {request.status.toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '3rem', textAlign: 'center', color: '#999' }}>
+                  <p>📭 No messages yet</p>
+                  <button 
+                    onClick={() => navigate('/clinics')}
+                    style={{
+                      padding: '0.8rem 1.5rem',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      marginTop: '1rem'
+                    }}
+                  >
+                    Start Chatting
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Chat Inbox Tab (Doctor) */}
+        {activeTab === 'chat-inbox' && user.is_doctor && (
+          <div>
+            <h2 style={{ marginBottom: '1.5rem' }}>📧 Chat Inbox</h2>
+            <p style={{ marginBottom: '2rem', color: '#666' }}>All messages from patients</p>
+            
+            <div style={{
+              background: 'white',
+              borderRadius: '15px',
+              border: '2px solid #e0e0e0',
+              minHeight: '400px'
+            }}>
+              {patients && patients.length > 0 ? (
+                <div>
+                  {patients.map((patient) => (
+                    <div
+                      key={patient.id}
+                      style={{
+                        padding: '1rem',
+                        borderBottom: '1px solid #e0e0e0',
+                        cursor: 'pointer',
+                        transition: 'background 0.3s'
+                      }}
+                      onClick={() => navigate(`/chat/${patient.id}`)}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                        <div style={{ flex: 1 }}>
+                          <h4 style={{ margin: '0 0 0.5rem 0' }}>
+                            {patient.full_name || patient.username}
+                          </h4>
+                          <p style={{ fontSize: '0.9rem', color: '#666', margin: '0' }}>
+                            {patient.email}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => navigate(`/chat/${patient.id}`)}
+                          style={{
+                            padding: '0.5rem 1rem',
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '5px',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem'
+                          }}
+                        >
+                          💬 Reply
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '3rem', textAlign: 'center', color: '#999' }}>
+                  <p>📭 No messages yet</p>
+                </div>
               )}
             </div>
           </div>

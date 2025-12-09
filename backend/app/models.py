@@ -303,8 +303,9 @@ class ChatRequest(db.Model):
     from_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     to_doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.id'), nullable=False)
     message = db.Column(db.Text)
-    status = db.Column(db.String(20), default='pending')
+    status = db.Column(db.String(20), default='pending')  # pending, accepted, rejected
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    responded_at = db.Column(db.DateTime)
     
     from_user = db.relationship('User', foreign_keys=[from_user_id], backref='sent_chat_requests')
     to_doctor = db.relationship('Doctor', foreign_keys=[to_doctor_id], backref='received_chat_requests')
@@ -316,5 +317,55 @@ class ChatRequest(db.Model):
             'to_doctor': self.to_doctor.to_dict(),
             'message': self.message,
             'status': self.status,
+            'created_at': self.created_at.isoformat(),
+            'responded_at': self.responded_at.isoformat() if self.responded_at else None
+        }
+
+class Chat(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.id'), nullable=False)
+    chat_request_id = db.Column(db.Integer, db.ForeignKey('chat_request.id'), nullable=False)
+    status = db.Column(db.String(20), default='active')  # active, ended
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    ended_at = db.Column(db.DateTime)
+    ended_by = db.Column(db.String(20))  # user, doctor
+    
+    user = db.relationship('User', backref='doctor_chats')
+    doctor = db.relationship('Doctor', backref='user_chats')
+    chat_request = db.relationship('ChatRequest', backref='chat')
+    messages = db.relationship('Message', backref='chat', cascade='all, delete-orphan', lazy=True)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user': self.user.to_dict(),
+            'doctor': self.doctor.to_dict(),
+            'status': self.status,
+            'created_at': self.created_at.isoformat(),
+            'ended_at': self.ended_at.isoformat() if self.ended_at else None,
+            'ended_by': self.ended_by,
+            'message_count': len(self.messages) if self.messages else 0
+        }
+
+class Message(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    chat_id = db.Column(db.Integer, db.ForeignKey('chat.id'), nullable=False)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    sender_type = db.Column(db.String(20), nullable=False)  # user, doctor
+    content = db.Column(db.Text, nullable=False)
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    sender = db.relationship('User', foreign_keys=[sender_id])
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'chat_id': self.chat_id,
+            'sender_id': self.sender_id,
+            'sender_type': self.sender_type,
+            'content': self.content,
+            'is_read': self.is_read,
             'created_at': self.created_at.isoformat()
         }

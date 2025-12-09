@@ -20,6 +20,16 @@ export const getCurrentUser = async () => {
   return response.data;
 };
 
+export const verifyEmail = async (token) => {
+  const response = await api.post('/auth/verify-email', { token });
+  return response.data;
+};
+
+export const resendVerificationEmail = async (email) => {
+  const response = await api.post('/auth/resend-verification-email', { email });
+  return response.data;
+};
+
 export const verifyDoctor = async (file) => {
   const formData = new FormData();
   formData.append('verification_document', file);

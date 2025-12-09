@@ -12,6 +12,9 @@ import MoodTracker from './components/MoodTracker';
 import Home from './pages/Home';
 import Login from './pages/Login1';
 import Signup from './pages/Signup';
+import EmailVerification from './pages/EmailVerification';
+import ResendVerification from './pages/ResendVerification';
+import Doctors from './pages/Doctors';
 import Clinics from './pages/Clinics';
 import ClinicDetail from './pages/ClinicDetail';
 import Articles from './pages/Articles';
@@ -20,6 +23,8 @@ import Journals from './pages/Journals';
 import JournalDetail from './pages/JournalDetail';
 import MyProfile from './pages/MyProfile';
 import UserProfile from './pages/UserProfile';
+import MyChats from './pages/MyChats';
+import DoctorDashboard from './pages/DoctorDashboard';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -56,6 +61,9 @@ function App() {
             <Route path="/" element={<Home user={user} />} />
             <Route path="/login" element={<Login onLogin={handleLogin} />} />
             <Route path="/signup" element={<Signup onLogin={handleLogin} />} />
+            <Route path="/verify-email" element={<EmailVerification onLogin={handleLogin} />} />
+            <Route path="/resend-verification" element={<ResendVerification />} />
+            <Route path="/doctors" element={<Doctors user={user} />} />
             <Route path="/clinics" element={<Clinics />} />
             <Route path="/clinics/:id" element={<ClinicDetail user={user} />} />
             <Route path="/articles" element={<Articles user={user} />} />
@@ -70,6 +78,28 @@ function App() {
                   <MyProfile user={user} setUser={setUser} />
                 </ProtectedRoute>
               } 
+            />
+            <Route
+              path="/chats"
+              element={
+                <ProtectedRoute user={user}>
+                  <MyChats user={user} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/doctor-dashboard"
+              element={
+                <ProtectedRoute user={user}>
+                  {user?.is_doctor ? (
+                    <DoctorDashboard user={user} />
+                  ) : (
+                    <div style={{ padding: '20px', textAlign: 'center' }}>
+                      <p>Only doctors can access this page</p>
+                    </div>
+                  )}
+                </ProtectedRoute>
+              }
             />
           </Routes>
         </div>

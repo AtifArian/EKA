@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getClinicDetail, bookSession, addClinicReview } from '../services/api';
+import api from '../services/api';
 
 function ClinicDetail({ user }) {
   const { id } = useParams();
@@ -9,7 +10,10 @@ function ClinicDetail({ user }) {
   const [showBooking, setShowBooking] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
+  const [showChatRequest, setShowChatRequest] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [chatRequestNote, setChatRequestNote] = useState('');
+  const [chatRequestLoading, setChatRequestLoading] = useState(false);
   const [bookingData, setBookingData] = useState({
     appointment_date: '',
     notes: ''
@@ -93,6 +97,42 @@ function ClinicDetail({ user }) {
       fetchClinicDetail();
     } catch (error) {
       alert(error.response?.data?.error || 'Failed to add review');
+    }
+  };
+
+  const handleSendChatRequest = async (e) => {
+    e.preventDefault();
+    
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    if (user.is_doctor) {
+      alert('Doctors cannot send chat requests');
+      return;
+    }
+
+    if (!chatRequestNote.trim()) {
+      alert('Please provide a reason for your chat request');
+      return;
+    }
+
+    try {
+      setChatRequestLoading(true);
+      const response = await api.post('/messages/chat-request/send', {
+        doctor_id: clinic.id,
+        message: chatRequestNote
+      });
+
+      alert('Chat request sent successfully! The doctor will review it soon.');
+      setChatRequestNote('');
+      setShowChatRequest(false);
+    } catch (error) {
+      console.error('Error sending request:', error);
+      alert(error.response?.data?.error || 'Failed to send chat request');
+    } finally {
+      setChatRequestLoading(false);
     }
   };
 
@@ -255,11 +295,18 @@ function ClinicDetail({ user }) {
       <div className="comments-section" style={{ marginTop: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2>Reviews ({clinic.reviews.length})</h2>
-          {user && !user.is_doctor && (
-            <button onClick={() => setShowReview(true)} className="submit-btn" style={{ width: 'auto' }}>
-              Write Review
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            {user && !user.is_doctor && (
+              <>
+                <button onClick={() => setShowChatRequest(true)} className="submit-btn" style={{ width: 'auto', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+                  💬 Chat with Doctor
+                </button>
+                <button onClick={() => setShowReview(true)} className="submit-btn" style={{ width: 'auto' }}>
+                  Write Review
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {clinic.reviews.map(review => (
@@ -484,8 +531,66 @@ function ClinicDetail({ user }) {
           </div>
         </div>
       )}
+
+      {showChatRequest && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999
+        }}>
+          <div className="form-container">
+            <h2>Send Chat Request</h2>
+            <form onSubmit={handleSendChatRequest}>
+              <div className="form-group">
+                <label>Why do you want to chat with this doctor?</label>
+                <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>
+                  Please describe your concerns or reason for chatting. This will help the doctor understand your needs.
+                </p>
+                <textarea
+                  value={chatRequestNote}
+                  onChange={(e) => setChatRequestNote(e.target.value)}
+                  placeholder="Describe your concerns, symptoms, or questions..."
+                  rows="5"
+                  style={{
+                    width: '100%',
+                    padding: '0.8rem',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '10px',
+                    fontSize: '1rem',
+                    fontFamily: 'inherit',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <button 
+                type="submit" 
+                className="submit-btn"
+                disabled={chatRequestLoading}
+              >
+                {chatRequestLoading ? 'Sending...' : 'Send Chat Request'}
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setShowChatRequest(false)} 
+                style={{ marginTop: '1rem', background: '#ccc' }} 
+                className="submit-btn"
+              >
+                Cancel
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 export default ClinicDetail;
+

@@ -111,6 +111,7 @@ def create_app(config_class=Config):
     from app.routes.articles import articles_bp
     from app.routes.journals import journals_bp
     from app.routes.mood import mood_bp
+    from app.routes.messages import messages_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api/users')
@@ -118,6 +119,7 @@ def create_app(config_class=Config):
     app.register_blueprint(clinics_bp, url_prefix='/api/clinics')
     app.register_blueprint(articles_bp, url_prefix='/api/articles')
     app.register_blueprint(journals_bp, url_prefix='/api/journals')
+    app.register_blueprint(messages_bp, url_prefix='/api/messages')
     app.register_blueprint(mood_bp, url_prefix='/api/mood')
     
     # Serve uploaded files
