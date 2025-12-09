@@ -56,6 +56,11 @@ def create_mood_entry():
         if not mood_level or mood_level not in [1, 2, 3, 4, 5]:
             return jsonify({'error': 'Invalid mood level (1-5)'}), 400
         
+        # Optional follow-up answers
+        energy_level = data.get('energy_level')
+        stress_level = data.get('stress_level')
+        social_connection = data.get('social_connection')
+        
         today = datetime.utcnow().date()
         
         mood = MoodEntry.query.filter_by(
@@ -65,11 +70,17 @@ def create_mood_entry():
         
         if mood:
             mood.mood_level = mood_level
+            mood.energy_level = energy_level
+            mood.stress_level = stress_level
+            mood.social_connection = social_connection
             mood.notes = data.get('notes')
         else:
             mood = MoodEntry(
                 user_id=current_user_id,
                 mood_level=mood_level,
+                energy_level=energy_level,
+                stress_level=stress_level,
+                social_connection=social_connection,
                 date=today,
                 notes=data.get('notes')
             )
