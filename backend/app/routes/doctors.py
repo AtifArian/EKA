@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
-from app.models import User, Doctor, ChatRequest  # ← FIXED: Removed DoctorPatient
+from app.models import User, Doctor, ChatRequest, ChatThread, Notification
 from app.utils.decorators import doctor_required
 from app.utils.suicide_prediction import predict_suicide_risk
 from collections import Counter
@@ -73,12 +73,9 @@ def update_doctor_profile():
     if 'google_maps_link' in data:
         doctor.google_maps_link = data['google_maps_link']
     
-    # Check if profile is complete (all required fields filled)
-    if (doctor.specialization and doctor.bio and doctor.expertise and 
-        doctor.education and doctor.age_group and doctor.session_charge is not None):
+    # Mark profile as complete if required fields are filled
+    if doctor.specialization and doctor.bio and doctor.session_charge is not None:
         doctor.is_profile_complete = True
-    else:
-        doctor.is_profile_complete = False
     
     db.session.commit()
     
@@ -86,6 +83,59 @@ def update_doctor_profile():
         'message': 'Profile updated successfully',
         'doctor': doctor.to_dict()
     }), 200
+
+@doctors_bp.route('/chat-requests', methods=['POST'])
+@jwt_required()
+def create_chat_request():
+    current_user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+    to_doctor_id = int(data.get('to_doctor_id', 0))
+    message = data.get('message')
+    if not to_doctor_id:
+        return jsonify({'error':'to_doctor_id required'}), 400
+    req = ChatRequest(from_user_id=current_user_id, to_doctor_id=to_doctor_id, message=message)
+    db.session.add(req)
+    # notify doctor
+    doctor = Doctor.query.get(to_doctor_id)
+    if doctor:
+        Notification(user_id=doctor.user_id, type='chat_request', ref_type='chat_request', ref_id=req.id)
+        db.session.add(Notification(user_id=doctor.user_id, type='chat_request', ref_type='chat_request', ref_id=req.id))
+    db.session.commit()
+    return jsonify(req.to_dict()), 201
+
+@doctors_bp.route('/chat-requests', methods=['GET'])
+@jwt_required()
+def list_chat_requests():
+    current_user_id = int(get_jwt_identity())
+    doctor = Doctor.query.filter_by(user_id=current_user_id).first()
+    if not doctor:
+        return jsonify({'error':'Only doctors can view chat requests'}), 403
+    requests = ChatRequest.query.filter_by(to_doctor_id=doctor.id).order_by(ChatRequest.created_at.desc()).all()
+    return jsonify([r.to_dict() for r in requests]), 200
+
+@doctors_bp.route('/chat-requests/<int:req_id>', methods=['PUT'])
+@jwt_required()
+def update_chat_request_status(req_id):
+    current_user_id = int(get_jwt_identity())
+    doctor = Doctor.query.filter_by(user_id=current_user_id).first()
+    if not doctor:
+        return jsonify({'error':'Only doctors can update chat requests'}), 403
+    req = ChatRequest.query.get(req_id)
+    if not req or req.to_doctor_id != doctor.id:
+        return jsonify({'error':'Chat request not found'}), 404
+    data = request.get_json() or {}
+    status = data.get('status')
+    if status not in ['approved','declined']:
+        return jsonify({'error':'Invalid status'}), 400
+    req.status = status
+    if status == 'approved':
+        # create thread
+        thread = ChatThread(type='user_doctor', user_id=req.from_user_id, doctor_id=req.to_doctor_id)
+        db.session.add(thread)
+        # notify requester
+        db.session.add(Notification(user_id=req.from_user_id, type='chat_request', ref_type='chat_request', ref_id=req.id))
+    db.session.commit()
+    return jsonify(req.to_dict()), 200
 
 @doctors_bp.route('/patients', methods=['GET'])
 @jwt_required()

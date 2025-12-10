@@ -12,23 +12,19 @@ import MoodTracker from './components/MoodTracker';
 import Home from './pages/Home';
 import Login from './pages/Login1';
 import Signup from './pages/Signup';
-import EmailVerification from './pages/EmailVerification';
-import ResendVerification from './pages/ResendVerification';
-import Doctors from './pages/Doctors';
 import Clinics from './pages/Clinics';
 import ClinicDetail from './pages/ClinicDetail';
-import DoctorProfile from './pages/DoctorProfile';
 import Articles from './pages/Articles';
 import ArticleDetail from './pages/ArticleDetail';
 import Journals from './pages/Journals';
 import JournalDetail from './pages/JournalDetail';
 import MyProfile from './pages/MyProfile';
 import UserProfile from './pages/UserProfile';
-import MyChats from './pages/MyChats';
-import DoctorDashboard from './pages/DoctorDashboard';
+import Chat from './pages/Chat';
 
 function App() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -36,6 +32,7 @@ function App() {
     if (token && userData) {
       setUser(JSON.parse(userData));
     }
+    setLoading(false);
   }, []);
 
   const handleLogin = (userData, token) => {
@@ -50,6 +47,12 @@ function App() {
     setUser(null);
   };
 
+  if (loading) {
+    return (
+      <div className="loading">Loading...</div>
+    );
+  }
+
   return (
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || "dummy-client-id"}>
       <Router>
@@ -62,17 +65,14 @@ function App() {
             <Route path="/" element={<Home user={user} />} />
             <Route path="/login" element={<Login onLogin={handleLogin} />} />
             <Route path="/signup" element={<Signup onLogin={handleLogin} />} />
-            <Route path="/verify-email" element={<EmailVerification onLogin={handleLogin} />} />
-            <Route path="/resend-verification" element={<ResendVerification />} />
-            <Route path="/doctors" element={<Doctors user={user} />} />
             <Route path="/clinics" element={<Clinics />} />
             <Route path="/clinics/:id" element={<ClinicDetail user={user} />} />
-            <Route path="/doctors/:id" element={<DoctorProfile user={user} />} />
             <Route path="/articles" element={<Articles user={user} />} />
             <Route path="/articles/:id" element={<ArticleDetail user={user} />} />
             <Route path="/journals" element={<Journals user={user} />} />
             <Route path="/journals/:id" element={<JournalDetail user={user} />} />
             <Route path="/users/:id" element={<UserProfile />} />
+            <Route path="/chat/:userId" element={<ProtectedRoute user={user}><Chat user={user} /></ProtectedRoute>} />
             <Route 
               path="/profile" 
               element={
@@ -80,28 +80,6 @@ function App() {
                   <MyProfile user={user} setUser={setUser} />
                 </ProtectedRoute>
               } 
-            />
-            <Route
-              path="/chats"
-              element={
-                <ProtectedRoute user={user}>
-                  <MyChats user={user} />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/doctor-dashboard"
-              element={
-                <ProtectedRoute user={user}>
-                  {user?.is_doctor ? (
-                    <DoctorDashboard user={user} />
-                  ) : (
-                    <div style={{ padding: '20px', textAlign: 'center' }}>
-                      <p>Only doctors can access this page</p>
-                    </div>
-                  )}
-                </ProtectedRoute>
-              }
             />
           </Routes>
         </div>

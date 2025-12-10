@@ -1,9 +1,8 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models import db, User, FriendRequest, Doctor, Notification
+from app.models import db, User, FriendRequest, Notification
 from sqlalchemy import or_
 import os
-from datetime import datetime
 
 users_bp = Blueprint('users', __name__)
 
@@ -40,11 +39,11 @@ def get_friends():
 
 @users_bp.route('/friends/<int:friend_id>', methods=['POST'])
 @jwt_required()
-def add_friend(friend_id):
+def send_friend_request(friend_id):
     current_user_id = int(get_jwt_identity())
     
     if current_user_id == friend_id:
-        return jsonify({'error': 'Cannot add yourself as friend'}), 400
+        return jsonify({'error': 'Cannot send friend request to yourself'}), 400
     
     user = User.query.get(current_user_id)
     friend = User.query.get(friend_id)
@@ -55,10 +54,104 @@ def add_friend(friend_id):
     if friend in user.friends:
         return jsonify({'error': 'Already friends'}), 400
     
-    user.friends.append(friend)
+    # Check if request already exists
+    existing_request = FriendRequest.query.filter_by(
+        from_user_id=current_user_id,
+        to_user_id=friend_id,
+        status='pending'
+    ).first()
+    
+    if existing_request:
+        return jsonify({'error': 'Friend request already sent'}), 400
+    
+    # Check if reverse request exists
+    reverse_request = FriendRequest.query.filter_by(
+        from_user_id=friend_id,
+        to_user_id=current_user_id,
+        status='pending'
+    ).first()
+    
+    if reverse_request:
+        return jsonify({'error': 'This user has already sent you a friend request'}), 400
+    
+    # Create friend request
+    friend_request = FriendRequest(from_user_id=current_user_id, to_user_id=friend_id)
+    db.session.add(friend_request)
+    
+    # Create notification
+    notification = Notification(
+        user_id=friend_id,
+        type='friend_request',
+        ref_type='friend_request',
+        ref_id=friend_request.id
+    )
+    db.session.add(notification)
     db.session.commit()
     
-    return jsonify({'message': 'Friend added successfully'}), 200
+    return jsonify({'message': 'Friend request sent'}), 201
+
+@users_bp.route('/friend-requests', methods=['GET'])
+@jwt_required()
+def get_friend_requests():
+    current_user_id = int(get_jwt_identity())
+    
+    # Get pending requests received by current user
+    requests = FriendRequest.query.filter_by(
+        to_user_id=current_user_id,
+        status='pending'
+    ).all()
+    
+    return jsonify([req.to_dict() for req in requests]), 200
+
+@users_bp.route('/friend-requests/<int:request_id>', methods=['PUT'])
+@jwt_required()
+def handle_friend_request(request_id):
+    current_user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+    action = data.get('action')  # 'accept' or 'reject'
+    
+    if action not in ['accept', 'reject']:
+        return jsonify({'error': 'Invalid action'}), 400
+    
+    friend_request = FriendRequest.query.get(request_id)
+    
+    if not friend_request:
+        return jsonify({'error': 'Friend request not found'}), 404
+    
+    if friend_request.to_user_id != current_user_id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    if friend_request.status != 'pending':
+        return jsonify({'error': 'Friend request already handled'}), 400
+    
+    if action == 'accept':
+        # Update request status
+        friend_request.status = 'accepted'
+        
+        # Add bidirectional friendship
+        user = User.query.get(current_user_id)
+        friend = User.query.get(friend_request.from_user_id)
+        
+        user.friends.append(friend)
+        if user not in friend.friends:
+            friend.friends.append(user)
+        
+        # Notify the requester
+        notification = Notification(
+            user_id=friend_request.from_user_id,
+            type='friend_request_accepted',
+            ref_type='user',
+            ref_id=current_user_id
+        )
+        db.session.add(notification)
+        
+        db.session.commit()
+        return jsonify({'message': 'Friend request accepted'}), 200
+    else:
+        # Reject request
+        friend_request.status = 'rejected'
+        db.session.commit()
+        return jsonify({'message': 'Friend request rejected'}), 200
 
 @users_bp.route('/friends/<int:friend_id>', methods=['DELETE'])
 @jwt_required()
@@ -73,7 +166,11 @@ def remove_friend(friend_id):
     if friend not in user.friends:
         return jsonify({'error': 'Not friends'}), 400
     
+    # Remove bidirectional friendship
     user.friends.remove(friend)
+    # Also remove reverse if exists
+    if user in friend.friends:
+        friend.friends.remove(user)
     db.session.commit()
     
     return jsonify({'message': 'Friend removed successfully'}), 200
@@ -133,125 +230,3 @@ def delete_profile_picture():
         return jsonify({'message': 'Profile picture deleted successfully'}), 200
     
     return jsonify({'error': 'No profile picture to delete'}), 404
-
-# ==================== FRIEND REQUESTS ====================
-
-@users_bp.route('/friend-request/send', methods=['POST'])
-@jwt_required()
-def send_friend_request():
-    """Send a friend request to another user or doctor"""
-    current_user_id = int(get_jwt_identity())
-    data = request.get_json()
-    
-    to_user_id = data.get('to_user_id')
-    message = data.get('message', '')
-    
-    if not to_user_id:
-        return jsonify({'error': 'To user ID is required'}), 400
-    
-    try:
-        to_user_id = int(to_user_id)
-    except (ValueError, TypeError):
-        return jsonify({'error': 'Invalid user ID'}), 400
-    
-    if current_user_id == to_user_id:
-        return jsonify({'error': 'Cannot send friend request to yourself'}), 400
-    
-    # Check if recipient exists
-    to_user = User.query.get(to_user_id)
-    if not to_user:
-        return jsonify({'error': 'User not found'}), 404
-    
-    # Check if already friends
-    from_user = User.query.get(current_user_id)
-    if to_user in from_user.friends:
-        return jsonify({'error': 'You are already friends'}), 400
-    
-    # Check if request already exists
-    existing_request = FriendRequest.query.filter(
-        FriendRequest.from_user_id == current_user_id,
-        FriendRequest.to_user_id == to_user_id,
-        FriendRequest.status == 'pending'
-    ).first()
-    
-    if existing_request:
-        return jsonify({'error': 'Friend request already pending'}), 400
-    
-    # Create friend request
-    friend_request = FriendRequest(
-        from_user_id=current_user_id,
-        to_user_id=to_user_id,
-        message=message,
-        status='pending'
-    )
-    
-    db.session.add(friend_request)
-    db.session.commit()
-    
-    return jsonify({
-        'message': 'Friend request sent successfully',
-        'friend_request': friend_request.to_dict()
-    }), 201
-
-@users_bp.route('/friend-request/<int:request_id>/respond', methods=['POST'])
-@jwt_required()
-def respond_to_friend_request(request_id):
-    """Accept or reject a friend request"""
-    current_user_id = int(get_jwt_identity())
-    data = request.get_json()
-    
-    action = data.get('action')  # 'accept' or 'reject'
-    
-    if action not in ['accept', 'reject']:
-        return jsonify({'error': 'Action must be accept or reject'}), 400
-    
-    friend_request = FriendRequest.query.get(request_id)
-    
-    if not friend_request:
-        return jsonify({'error': 'Friend request not found'}), 404
-    
-    # Check if current user is the recipient
-    if friend_request.to_user_id != current_user_id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    
-    if friend_request.status != 'pending':
-        return jsonify({'error': 'Friend request is no longer pending'}), 400
-    
-    if action == 'accept':
-        # Add as friends
-        friend_request.from_user.friends.append(friend_request.to_user)
-        friend_request.status = 'accepted'
-        friend_request.responded_at = datetime.utcnow()
-        
-        # Create notification for the sender
-        notification = Notification(
-            user_id=friend_request.from_user_id,
-            type='friend_request_accepted',
-            title='Friend Request Accepted',
-            message=f'{friend_request.to_user.full_name or friend_request.to_user.username} accepted your friend request!',
-            related_user_id=current_user_id
-        )
-        db.session.add(notification)
-    else:  # reject
-        friend_request.status = 'rejected'
-        friend_request.responded_at = datetime.utcnow()
-    
-    db.session.commit()
-    
-    return jsonify({
-        'message': f'Friend request {action}ed',
-        'friend_request': friend_request.to_dict()
-    }), 200
-
-@users_bp.route('/friend-requests', methods=['GET'])
-@jwt_required()
-def get_friend_requests():
-    """Get pending friend requests for current user"""
-    current_user_id = int(get_jwt_identity())
-    
-    pending_requests = FriendRequest.query.filter(
-        FriendRequest.to_user_id == current_user_id,
-        FriendRequest.status == 'pending'
-    ).all()
-    
-    return jsonify([req.to_dict() for req in pending_requests]), 200

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getJournals, getTopJournals } from '../services/api';
 import JournalTile from '../components/JournalTile';
+import Chatbot from '../components/Chatbot';
 
 function Journals({ user }) {
   const [journals, setJournals] = useState([]);
@@ -61,6 +62,7 @@ function Journals({ user }) {
           <JournalTile key={journal.id} journal={journal} />
         ))}
       </div>
+      <Chatbot />
     </div>
   );
 }

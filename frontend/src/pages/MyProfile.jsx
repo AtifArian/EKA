@@ -2,40 +2,51 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   searchUsers, 
   addFriend, 
+  removeFriend,
   getFriends,
+  getFriendRequests,
+  handleFriendRequest as handleFriendRequestAPI,
   getMyJournals,
   createJournal,
   updateJournal,
   deleteJournal,
   getPatients,
   getChatRequests,
+  updateChatRequest,
   createArticle,
   getDoctorProfile,
   updateDoctorProfile,
   getMyArticles,
   deleteArticle,
   uploadProfilePicture,
-  deleteProfilePicture,
-  getFriendRequests,
-  respondToFriendRequest
+  deleteProfilePicture
 } from '../services/api';
-import { respondToChatRequest } from '../services/messages';
+import {
+  listThreads,
+  getThreadMessages,
+  postThreadMessage,
+  markThreadRead,
+  deleteThread,
+  createUserUserThread,
+  getNotificationCounts,
+  markNotificationsRead
+} from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import MapLocationPicker from '../components/MapLocationPicker';
 
 function MyProfile({ user, setUser }) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(user?.is_doctor ? 'clinic-profile' : 'journals');
   const [friends, setFriends] = useState([]);
+  const [friendRequests, setFriendRequests] = useState([]);
   const [journals, setJournals] = useState([]);
   const [articles, setArticles] = useState([]);
   const [patients, setPatients] = useState([]);
   const [chatRequests, setChatRequests] = useState([]);
-  const [friendRequests, setFriendRequests] = useState([]);
   const [doctorProfile, setDoctorProfile] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showJournalForm, setShowJournalForm] = useState(false);
-  const [respondingTo, setRespondingTo] = useState(null);
   
   const [journalForm, setJournalForm] = useState({
     title: '',
@@ -59,16 +70,25 @@ function MyProfile({ user, setUser }) {
     age_group: '',
     location: '',
     session_charge: '',
-    google_maps_link: ''
+    google_maps_link: '',
+    latitude: null,
+    longitude: null
   });
 
   const [uploadingPicture, setUploadingPicture] = useState(false);
+  const [threads, setThreads] = useState([]);
+  const [selectedThreadId, setSelectedThreadId] = useState(null);
+  const [threadMessages, setThreadMessages] = useState([]);
+  const [messageText, setMessageText] = useState('');
+  const [notificationCounts, setNotificationCounts] = useState({ inbox: 0, chat_requests: 0 });
 
   const loadData = useCallback(async () => {
     try {
       if (activeTab === 'friends') {
         const data = await getFriends();
         setFriends(data);
+        const requests = await getFriendRequests();
+        setFriendRequests(requests);
       } else if (activeTab === 'journals') {
         const data = await getMyJournals();
         setJournals(data);
@@ -81,12 +101,10 @@ function MyProfile({ user, setUser }) {
       } else if (activeTab === 'chat-requests' && user.is_doctor) {
         const data = await getChatRequests();
         setChatRequests(data);
-      } else if (activeTab === 'friend-requests' && user.is_doctor) {
-        const data = await getFriendRequests();
-        setFriendRequests(data);
       } else if (activeTab === 'clinic-profile' && user.is_doctor) {
         try {
           const profile = await getDoctorProfile();
+          console.log('Loaded doctor profile:', profile);
           setDoctorProfile(profile);
           setClinicForm({
             specialization: profile.specialization || '',
@@ -97,11 +115,25 @@ function MyProfile({ user, setUser }) {
             age_group: profile.age_group || '',
             location: profile.location || '',
             session_charge: profile.session_charge || '',
-            google_maps_link: profile.google_maps_link || ''
+            google_maps_link: profile.google_maps_link || '',
+            latitude: profile.latitude || null,
+            longitude: profile.longitude || null
+          });
+          console.log('Set clinic form to:', {
+            specialization: profile.specialization || '',
+            bio: profile.bio || '',
+            quote: profile.quote || '',
+            session_charge: profile.session_charge || ''
           });
         } catch (error) {
-          console.log('No doctor profile yet');
+          console.log('No doctor profile yet:', error);
         }
+      } else if (activeTab === 'inbox') {
+        const data = await listThreads();
+        setThreads(data);
+        // reset thread view when switching into inbox
+        setSelectedThreadId(null);
+        setThreadMessages([]);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -116,19 +148,66 @@ function MyProfile({ user, setUser }) {
     loadData();
   }, [user, activeTab, loadData, navigate]);
 
+  // Poll notification counts periodically
+  useEffect(() => {
+    let timer;
+    const poll = async () => {
+      try {
+        const counts = await getNotificationCounts();
+        if (counts) setNotificationCounts(counts);
+      } catch (e) {
+        // ignore polling errors
+      }
+    };
+    poll();
+    timer = setInterval(poll, 15000);
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [user]);
+
+  // Mark notifications read on tab entry
+  useEffect(() => {
+    const markRead = async () => {
+      try {
+        if (activeTab === 'inbox') {
+          await markNotificationsRead('inbox');
+        } else if (activeTab === 'chat-requests' && user?.is_doctor) {
+          await markNotificationsRead('chat_requests');
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    markRead();
+  }, [activeTab, user]);
+
+  // Poll messages when a thread is selected
+  useEffect(() => {
+    if (!selectedThreadId) return;
+    const loadMessages = async () => {
+      try {
+        const msgs = await getThreadMessages(selectedThreadId);
+        setThreadMessages(msgs);
+      } catch (e) {
+        console.error('Error loading messages:', e);
+      }
+    };
+    // Load immediately
+    loadMessages();
+    // Then poll every 3 seconds
+    const interval = setInterval(loadMessages, 3000);
+    return () => clearInterval(interval);
+  }, [selectedThreadId]);
+
   const handleUpdateClinicProfile = async (e) => {
     e.preventDefault();
     try {
-      // Extract URL from iframe code if user pasted embed code instead of URL
-      let googleMapsLink = clinicForm.google_maps_link;
-      if (googleMapsLink && googleMapsLink.includes('<iframe')) {
-        const srcMatch = googleMapsLink.match(/src=["']([^"']+)["']/);
-        if (srcMatch) {
-          googleMapsLink = srcMatch[1];
-        }
-      }
-      
-      const dataToSubmit = { ...clinicForm, google_maps_link: googleMapsLink };
+      const dataToSubmit = {
+        ...clinicForm,
+        latitude: clinicForm.latitude,
+        longitude: clinicForm.longitude
+      };
       await updateDoctorProfile(dataToSubmit);
       alert('Clinic profile updated successfully!');
       loadData();
@@ -150,12 +229,82 @@ function MyProfile({ user, setUser }) {
   const handleAddFriend = async (friendId) => {
     try {
       await addFriend(friendId);
-      alert('Friend added successfully!');
+      alert('Friend request sent!');
       setSearchResults([]);
       setSearchQuery('');
       loadData();
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to add friend');
+      alert(error.response?.data?.error || 'Failed to send friend request');
+    }
+  };
+
+  const handleAcceptFriendRequest = async (requestId) => {
+    try {
+      await handleFriendRequestAPI(requestId, 'accept');
+      alert('Friend request accepted!');
+      loadData();
+    } catch (error) {
+      alert(error.response?.data?.error || 'Failed to accept friend request');
+    }
+  };
+
+  const handleRejectFriendRequest = async (requestId) => {
+    try {
+      await handleFriendRequestAPI(requestId, 'reject');
+      alert('Friend request rejected');
+      loadData();
+    } catch (error) {
+      alert(error.response?.data?.error || 'Failed to reject friend request');
+    }
+  };
+
+  const handleRemoveFriend = async (friendId) => {
+    if (!window.confirm('Remove this friend?')) return;
+    try {
+      await removeFriend(friendId);
+      alert('Friend removed');
+      loadData();
+    } catch (error) {
+      alert(error.response?.data?.error || 'Failed to remove friend');
+    }
+  };
+
+  const handleOpenChat = async (friendId) => {
+    try {
+      // First switch to inbox tab
+      setActiveTab('inbox');
+      
+      // Small delay to ensure tab switch completes
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Load threads
+      const threadsData = await listThreads();
+      setThreads(threadsData);
+      
+      // Find the thread with this friend
+      const thread = threadsData.find(t => 
+        t.thread_type === 'user_user' && 
+        t.participants.some(p => p.id === friendId)
+      );
+      
+      if (thread) {
+        // Select the existing thread
+        setSelectedThreadId(thread.id);
+        const msgs = await getThreadMessages(thread.id);
+        setThreadMessages(msgs);
+        await markThreadRead(thread.id);
+      } else {
+        // Create new thread
+        const newThread = await createUserUserThread(friendId);
+        const threadsRefresh = await listThreads();
+        setThreads(threadsRefresh);
+        setSelectedThreadId(newThread.id);
+        const msgs = await getThreadMessages(newThread.id);
+        setThreadMessages(msgs);
+      }
+    } catch (error) {
+      console.error('Error opening chat:', error);
+      alert('Failed to open chat');
     }
   };
 
@@ -262,28 +411,27 @@ function MyProfile({ user, setUser }) {
     }
   };
 
-  const handleChatRequestAction = async (requestId, action) => {
+  const handleChatRequestAction = async (requestId, status) => {
     try {
-      await respondToChatRequest(requestId, action);
-      alert(`Chat request ${action}ed!`);
+      await updateChatRequest(requestId, { status });
+      alert(`Chat request ${status}!`);
       loadData();
     } catch (error) {
-      console.error('Error responding to chat request:', error);
       alert('Failed to update chat request');
     }
   };
 
-  const handleFriendRequestAction = async (requestId, action) => {
+  const handleDeleteThread = async (threadId) => {
+    if (!window.confirm('Delete this conversation? This will remove it for both participants.')) return;
     try {
-      setRespondingTo(requestId);
-      await respondToFriendRequest(requestId, action);
-      alert(`Friend request ${action}ed!`);
-      loadData();
+      await deleteThread(threadId);
+      setThreads(threads.filter(t => t.id !== threadId));
+      if (selectedThreadId === threadId) {
+        setSelectedThreadId(null);
+        setThreadMessages([]);
+      }
     } catch (error) {
-      console.error('Error responding to friend request:', error);
-      alert(error.response?.data?.error || 'Failed to respond to friend request');
-    } finally {
-      setRespondingTo(null);
+      alert('Failed to delete thread: ' + (error.response?.data?.error || error.message));
     }
   };
 
@@ -421,6 +569,34 @@ function MyProfile({ user, setUser }) {
           marginBottom: '2rem',
           flexWrap: 'wrap'
         }}>
+          {(
+            <>
+              <button
+                onClick={() => setActiveTab('inbox')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '1rem 1.5rem',
+                  fontSize: '1.05rem',
+                  fontWeight: '600',
+                  color: activeTab === 'inbox' ? '#7F7FD5' : '#999',
+                  borderBottom: activeTab === 'inbox' ? '3px solid #7F7FD5' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Inbox {notificationCounts.inbox > 0 && (
+                  <span style={{
+                    marginLeft: '0.4rem',
+                    display: 'inline-block',
+                    width: '10px',
+                    height: '10px',
+                    background: '#e74c3c',
+                    borderRadius: '50%'
+                  }}/>
+                )}
+              </button>
+            </>
+          )}
           {!user.is_doctor && (
             <>
               <button
@@ -453,36 +629,6 @@ function MyProfile({ user, setUser }) {
               >
                 Friends
               </button>
-              <button
-                onClick={() => setActiveTab('my-doctors')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: '1rem 1.5rem',
-                  fontSize: '1.05rem',
-                  fontWeight: '600',
-                  color: activeTab === 'my-doctors' ? '#7F7FD5' : '#999',
-                  borderBottom: activeTab === 'my-doctors' ? '3px solid #7F7FD5' : 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                👨‍⚕️ My Doctors
-              </button>
-              <button
-                onClick={() => setActiveTab('inbox')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: '1rem 1.5rem',
-                  fontSize: '1.05rem',
-                  fontWeight: '600',
-                  color: activeTab === 'inbox' ? '#7F7FD5' : '#999',
-                  borderBottom: activeTab === 'inbox' ? '3px solid #7F7FD5' : 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                📧 My Inbox
-              </button>
             </>
           )}
           
@@ -502,6 +648,21 @@ function MyProfile({ user, setUser }) {
                 }}
               >
                 🏥 Clinic Profile
+              </button>
+              <button
+                onClick={() => setActiveTab('friends')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '1rem 1.5rem',
+                  fontSize: '1.05rem',
+                  fontWeight: '600',
+                  color: activeTab === 'friends' ? '#7F7FD5' : '#999',
+                  borderBottom: activeTab === 'friends' ? '3px solid #7F7FD5' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                👥 Friends
               </button>
               <button
                 onClick={() => setActiveTab('patients')}
@@ -531,37 +692,16 @@ function MyProfile({ user, setUser }) {
                   cursor: 'pointer'
                 }}
               >
-                💬 Chat Requests
-              </button>
-              <button
-                onClick={() => setActiveTab('friend-requests')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: '1rem 1.5rem',
-                  fontSize: '1.05rem',
-                  fontWeight: '600',
-                  color: activeTab === 'friend-requests' ? '#7F7FD5' : '#999',
-                  borderBottom: activeTab === 'friend-requests' ? '3px solid #7F7FD5' : 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                👥 Friend Requests
-              </button>
-              <button
-                onClick={() => setActiveTab('chat-inbox')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: '1rem 1.5rem',
-                  fontSize: '1.05rem',
-                  fontWeight: '600',
-                  color: activeTab === 'chat-inbox' ? '#7F7FD5' : '#999',
-                  borderBottom: activeTab === 'chat-inbox' ? '3px solid #7F7FD5' : 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                📧 Chat Inbox
+                💬 Chat Requests {notificationCounts.chat_requests > 0 && (
+                  <span style={{
+                    marginLeft: '0.4rem',
+                    display: 'inline-block',
+                    width: '10px',
+                    height: '10px',
+                    background: '#e74c3c',
+                    borderRadius: '50%'
+                  }}/>
+                )}
               </button>
               <button
                 onClick={() => setActiveTab('my-articles')}
@@ -700,19 +840,20 @@ function MyProfile({ user, setUser }) {
                 />
               </div>
 
-              <div className="form-group">
-                <label>Google Maps Link (Clinic Location)</label>
-                <input
-                  type="text"
-                  value={clinicForm.google_maps_link}
-                  onChange={(e) => setClinicForm({...clinicForm, google_maps_link: e.target.value})}
-                  placeholder="https://maps.google.com/... or paste embed code"
-                />
-                <small style={{color: '#666', fontSize: '0.85rem', marginTop: '0.3rem', display: 'block'}}>
-                  <strong>Option 1:</strong> Search your clinic on Google Maps → Click "Share" → "Embed a map" → Copy the URL from the iframe src<br/>
-                  <strong>Option 2:</strong> Or just paste the regular share link (e.g., https://maps.app.goo.gl/...)
-                </small>
-              </div>
+              <MapLocationPicker
+                initialPosition={
+                  clinicForm.latitude && clinicForm.longitude
+                    ? { lat: clinicForm.latitude, lng: clinicForm.longitude }
+                    : null
+                }
+                onLocationSelect={(position) => {
+                  setClinicForm({
+                    ...clinicForm,
+                    latitude: position.lat,
+                    longitude: position.lng
+                  });
+                }}
+              />
 
               <button type="submit" className="submit-btn">
                 {doctorProfile?.is_profile_complete ? 'Update Clinic Profile' : 'Create Clinic Profile'}
@@ -810,7 +951,7 @@ function MyProfile({ user, setUser }) {
                   <p style={{ color: '#666', marginBottom: '1rem' }}>{request.message}</p>
                   <div style={{ display: 'flex', gap: '1rem' }}>
                     <button
-                      onClick={() => handleChatRequestAction(request.id, 'accept')}
+                      onClick={() => handleChatRequestAction(request.id, 'approved')}
                       style={{
                         background: '#4CAF50',
                         color: 'white',
@@ -824,7 +965,7 @@ function MyProfile({ user, setUser }) {
                       Accept
                     </button>
                     <button
-                      onClick={() => handleChatRequestAction(request.id, 'reject')}
+                      onClick={() => handleChatRequestAction(request.id, 'declined')}
                       style={{
                         background: '#e74c3c',
                         color: 'white',
@@ -849,75 +990,6 @@ function MyProfile({ user, setUser }) {
                 borderRadius: '15px'
               }}>
                 <p style={{ fontSize: '1.1rem' }}>No pending chat requests</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Friend Requests Tab (Doctor) */}
-        {activeTab === 'friend-requests' && user.is_doctor && (
-          <div>
-            <h2 style={{ marginBottom: '1.5rem' }}>Friend Requests</h2>
-            
-            {friendRequests.filter(r => r.status === 'pending').length > 0 ? (
-              friendRequests.filter(r => r.status === 'pending').map(request => (
-                <div key={request.id} style={{
-                  background: '#f8f9fa',
-                  padding: '1.5rem',
-                  borderRadius: '15px',
-                  marginBottom: '1rem'
-                }}>
-                  <h3 style={{ color: '#333', marginBottom: '0.5rem' }}>
-                    From: {request.from_user.full_name || request.from_user.username}
-                  </h3>
-                  {request.message && (
-                    <p style={{ color: '#666', marginBottom: '1rem' }}>{request.message}</p>
-                  )}
-                  <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button
-                      onClick={() => handleFriendRequestAction(request.id, 'accept')}
-                      disabled={respondingTo === request.id}
-                      style={{
-                        background: '#4CAF50',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.6rem 1.5rem',
-                        borderRadius: '10px',
-                        cursor: respondingTo === request.id ? 'not-allowed' : 'pointer',
-                        fontWeight: '600',
-                        opacity: respondingTo === request.id ? 0.6 : 1
-                      }}
-                    >
-                      {respondingTo === request.id ? 'Processing...' : 'Accept'}
-                    </button>
-                    <button
-                      onClick={() => handleFriendRequestAction(request.id, 'reject')}
-                      disabled={respondingTo === request.id}
-                      style={{
-                        background: '#e74c3c',
-                        color: 'white',
-                        border: 'none',
-                        padding: '0.6rem 1.5rem',
-                        borderRadius: '10px',
-                        cursor: respondingTo === request.id ? 'not-allowed' : 'pointer',
-                        fontWeight: '600',
-                        opacity: respondingTo === request.id ? 0.6 : 1
-                      }}
-                    >
-                      {respondingTo === request.id ? 'Processing...' : 'Reject'}
-                    </button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div style={{ 
-                textAlign: 'center', 
-                padding: '3rem', 
-                color: '#999',
-                background: '#f8f9fa',
-                borderRadius: '15px'
-              }}>
-                <p style={{ fontSize: '1.1rem' }}>No pending friend requests</p>
               </div>
             )}
           </div>
@@ -1176,8 +1248,144 @@ function MyProfile({ user, setUser }) {
           </div>
         )}
 
-        {/* Friends Tab (Regular Users) */}
-        {activeTab === 'friends' && !user.is_doctor && (
+        {/* Inbox Tab (Regular Users) */}
+        {activeTab === 'inbox' && (
+          <div>
+            <h2 style={{ marginBottom: '1.5rem' }}>Inbox</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1rem' }}>
+              <div style={{
+                background: '#f8f9fa',
+                padding: '1rem',
+                borderRadius: '12px',
+                maxHeight: '480px',
+                overflowY: 'auto'
+              }}>
+                {threads.length === 0 && (
+                  <p style={{ color: '#999' }}>No conversations yet.</p>
+                )}
+                {threads.map(thread => (
+                  <div
+                    key={thread.id}
+                    style={{
+                      padding: '0.8rem',
+                      background: selectedThreadId === thread.id ? 'white' : '#eef2f7',
+                      borderRadius: '10px',
+                      marginBottom: '0.6rem',
+                      border: '1px solid #e0e0e0',
+                      position: 'relative'
+                    }}
+                  >
+                    <div
+                      onClick={async () => {
+                        setSelectedThreadId(thread.id);
+                        const msgs = await getThreadMessages(thread.id);
+                        setThreadMessages(Array.isArray(msgs) ? msgs : []);
+                        try { await markThreadRead(thread.id); } catch {}
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div style={{ fontWeight: 600, color: '#333' }}>{thread.thread_type === 'user_user' ? 'Friend Chat' : 'Doctor Chat'}</div>
+                      <div style={{ fontSize: '0.85rem', color: '#666' }}>
+                        With: {(() => {
+                          const participants = (thread.participants || []);
+                          const others = participants.filter(p => p.id !== user.id);
+                          return others.length > 0 ? others.map(p => p.full_name || p.username).join(', ') : '';
+                        })()}
+                      </div>
+                      {thread.last_message && thread.last_message.content && (
+                        <div style={{ fontSize: '0.85rem', color: '#999', marginTop: '0.3rem' }}>
+                          "{thread.last_message.content.length > 80 ? thread.last_message.content.slice(0, 80) + '…' : thread.last_message.content}"
+                        </div>
+                      )}
+                      {thread.unread_count > 0 && (
+                        <div style={{ fontSize: '0.8rem', color: '#7F7FD5', marginTop: '0.3rem' }}>
+                          • {thread.unread_count} new
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteThread(thread.id);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: '0.5rem',
+                        right: '0.5rem',
+                        background: '#e74c3c',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '24px',
+                        height: '24px',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      title="Delete conversation"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div style={{
+                background: '#f8f9fa',
+                padding: '1rem',
+                borderRadius: '12px',
+                minHeight: '300px'
+              }}>
+                {!selectedThreadId ? (
+                  <p style={{ color: '#999' }}>Select a conversation to view messages.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1rem' }}>
+                      {(Array.isArray(threadMessages) ? threadMessages : []).map(m => (
+                        <div key={m.id} style={{
+                          background: m.sender.id === user.id ? '#dbe7ff' : 'white',
+                          padding: '0.8rem',
+                          borderRadius: '10px',
+                          marginBottom: '0.6rem',
+                          border: '1px solid #e0e0e0'
+                        }}>
+                          <div style={{ fontWeight: 600 }}>{m.sender.username}</div>
+                          <div style={{ color: '#333' }}>{m.content}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input
+                        type="text"
+                        value={messageText}
+                        onChange={e => setMessageText(e.target.value)}
+                        placeholder="Type a message..."
+                        style={{ flex: 1, padding: '0.8rem', border: '2px solid #e0e0e0', borderRadius: '10px' }}
+                      />
+                      <button
+                        onClick={async () => {
+                          if (!messageText.trim()) return;
+                          await postThreadMessage(selectedThreadId, { content: messageText });
+                          const msgs = await getThreadMessages(selectedThreadId);
+                          setThreadMessages(msgs);
+                          setMessageText('');
+                        }}
+                        className="submit-btn"
+                        style={{ width: 'auto' }}
+                      >
+                        Send
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Friends Tab */}
+        {activeTab === 'friends' && (
           <div>
             <h2 style={{ marginBottom: '1.5rem' }}>Friends</h2>
             
@@ -1239,6 +1447,91 @@ function MyProfile({ user, setUser }) {
               )}
             </div>
 
+            {/* Friend Requests Section */}
+            {friendRequests.length > 0 && (
+              <div style={{ 
+                background: '#fff3cd',
+                padding: '1.5rem',
+                borderRadius: '15px',
+                marginBottom: '2rem',
+                border: '2px solid #ffc107'
+              }}>
+                <h3 style={{ marginBottom: '1rem', color: '#856404' }}>Friend Requests ({friendRequests.length})</h3>
+                {friendRequests.map(req => (
+                  <div 
+                    key={req.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '1rem',
+                      padding: '1rem',
+                      background: 'white',
+                      borderRadius: '10px',
+                      marginBottom: '0.8rem'
+                    }}
+                  >
+                    <div style={{
+                      width: '50px',
+                      height: '50px',
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      border: '2px solid #ffc107',
+                      background: '#f0f0f0',
+                      flexShrink: 0
+                    }}>
+                      {req.from_user.profile_picture ? (
+                        <img 
+                          src={`${process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050'}${req.from_user.profile_picture}`}
+                          alt={req.from_user.username}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: '100%',
+                          height: '100%',
+                          background: 'linear-gradient(135deg, #ffc107, #ff9800)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontSize: '1.2rem',
+                          fontWeight: 'bold'
+                        }}>
+                          {req.from_user.username.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: '600', color: '#333' }}>{req.from_user.username}</div>
+                      <div style={{ fontSize: '0.9rem', color: '#666' }}>
+                        {req.from_user.full_name || 'No name'}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        onClick={() => handleAcceptFriendRequest(req.id)}
+                        className="submit-btn"
+                        style={{ width: 'auto', background: '#28a745' }}
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => handleRejectFriendRequest(req.id)}
+                        className="submit-btn"
+                        style={{ width: 'auto', background: '#dc3545' }}
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div>
               {friends.map(friend => (
                 <div 
@@ -1251,9 +1544,8 @@ function MyProfile({ user, setUser }) {
                     background: '#f8f9fa',
                     borderRadius: '15px',
                     marginBottom: '0.8rem',
-                    cursor: 'pointer'
+                    cursor: 'default'
                   }}
-                  onClick={() => navigate(`/users/${friend.id}`)}
                 >
                   <div style={{
                     width: '50px',
@@ -1290,11 +1582,34 @@ function MyProfile({ user, setUser }) {
                       </div>
                     )}
                   </div>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: '600', color: '#333' }}>{friend.username}</div>
                     <div style={{ fontSize: '0.9rem', color: '#666' }}>
                       {friend.full_name || 'No name'}
                     </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      onClick={() => navigate(`/users/${friend.id}`)}
+                      className="submit-btn"
+                      style={{ width: 'auto', background: '#ccc' }}
+                    >
+                      View
+                    </button>
+                    <button
+                      onClick={() => handleOpenChat(friend.id)}
+                      className="submit-btn"
+                      style={{ width: 'auto' }}
+                    >
+                      Message
+                    </button>
+                    <button
+                      onClick={() => handleRemoveFriend(friend.id)}
+                      className="submit-btn"
+                      style={{ width: 'auto', background: '#dc3545' }}
+                    >
+                      Remove
+                    </button>
                   </div>
                 </div>
               ))}
@@ -1303,208 +1618,6 @@ function MyProfile({ user, setUser }) {
                 <p style={{ textAlign: 'center', color: '#999', padding: '2rem' }}>
                   No friends yet. Search and add some!
                 </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* My Doctors Tab (User) */}
-        {activeTab === 'my-doctors' && !user.is_doctor && (
-          <div>
-            <h2 style={{ marginBottom: '1.5rem' }}>👨‍⚕️ My Doctors</h2>
-            <p style={{ marginBottom: '2rem', color: '#666' }}>Doctors you have an active chat with</p>
-            
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-              gap: '1.5rem'
-            }}>
-              {patients && patients.length > 0 ? (
-                patients.map((doctor) => (
-                  <div 
-                    key={doctor.id}
-                    style={{
-                      background: 'white',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '15px',
-                      padding: '1.5rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s ease'
-                    }}
-                  >
-                    <h3 style={{ marginBottom: '0.5rem' }}>{doctor.user?.full_name || 'Dr. ' + doctor.user?.username}</h3>
-                    <p style={{ color: '#7F7FD5', marginBottom: '0.5rem' }}>{doctor.specialization}</p>
-                    {doctor.bio && <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>{doctor.bio}</p>}
-                    <button
-                      onClick={() => navigate(`/chat/${doctor.id}`)}
-                      style={{
-                        width: '100%',
-                        padding: '0.8rem',
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '10px',
-                        cursor: 'pointer',
-                        fontWeight: '600'
-                      }}
-                    >
-                      💬 Chat Now
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: '#999' }}>
-                  <p>No doctors yet. Browse clinics to start chatting!</p>
-                  <button 
-                    onClick={() => navigate('/clinics')}
-                    style={{
-                      padding: '0.8rem 1.5rem',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      marginTop: '1rem'
-                    }}
-                  >
-                    Browse Clinics
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* My Inbox Tab (User) */}
-        {activeTab === 'inbox' && !user.is_doctor && (
-          <div>
-            <h2 style={{ marginBottom: '1.5rem' }}>📧 My Inbox</h2>
-            <p style={{ marginBottom: '2rem', color: '#666' }}>All messages from doctors</p>
-            
-            <div style={{
-              background: 'white',
-              borderRadius: '15px',
-              border: '2px solid #e0e0e0',
-              minHeight: '400px'
-            }}>
-              {chatRequests && chatRequests.length > 0 ? (
-                <div>
-                  {chatRequests.map((request) => (
-                    <div
-                      key={request.id}
-                      style={{
-                        padding: '1rem',
-                        borderBottom: '1px solid #e0e0e0',
-                        cursor: 'pointer',
-                        transition: 'background 0.3s'
-                      }}
-                      onClick={() => navigate(`/chat/${request.id}`)}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                        <div style={{ flex: 1 }}>
-                          <h4 style={{ margin: '0 0 0.5rem 0' }}>
-                            {request.to_doctor?.user?.full_name || 'Dr. ' + request.to_doctor?.user?.username}
-                          </h4>
-                          <p style={{ fontSize: '0.9rem', color: '#666', margin: '0 0 0.5rem 0' }}>
-                            {request.to_doctor?.specialization}
-                          </p>
-                          <p style={{ fontSize: '0.85rem', color: '#999' }}>
-                            {request.message}
-                          </p>
-                        </div>
-                        <span style={{
-                          padding: '0.4rem 0.8rem',
-                          background: request.status === 'accepted' ? '#d4edda' : '#fff3cd',
-                          color: request.status === 'accepted' ? '#155724' : '#856404',
-                          borderRadius: '20px',
-                          fontSize: '0.8rem',
-                          fontWeight: '600'
-                        }}>
-                          {request.status.toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ padding: '3rem', textAlign: 'center', color: '#999' }}>
-                  <p>📭 No messages yet</p>
-                  <button 
-                    onClick={() => navigate('/clinics')}
-                    style={{
-                      padding: '0.8rem 1.5rem',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      marginTop: '1rem'
-                    }}
-                  >
-                    Start Chatting
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Chat Inbox Tab (Doctor) */}
-        {activeTab === 'chat-inbox' && user.is_doctor && (
-          <div>
-            <h2 style={{ marginBottom: '1.5rem' }}>📧 Chat Inbox</h2>
-            <p style={{ marginBottom: '2rem', color: '#666' }}>All messages from patients</p>
-            
-            <div style={{
-              background: 'white',
-              borderRadius: '15px',
-              border: '2px solid #e0e0e0',
-              minHeight: '400px'
-            }}>
-              {patients && patients.length > 0 ? (
-                <div>
-                  {patients.map((patient) => (
-                    <div
-                      key={patient.id}
-                      style={{
-                        padding: '1rem',
-                        borderBottom: '1px solid #e0e0e0',
-                        cursor: 'pointer',
-                        transition: 'background 0.3s'
-                      }}
-                      onClick={() => navigate(`/chat/${patient.id}`)}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                        <div style={{ flex: 1 }}>
-                          <h4 style={{ margin: '0 0 0.5rem 0' }}>
-                            {patient.full_name || patient.username}
-                          </h4>
-                          <p style={{ fontSize: '0.9rem', color: '#666', margin: '0' }}>
-                            {patient.email}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => navigate(`/chat/${patient.id}`)}
-                          style={{
-                            padding: '0.5rem 1rem',
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '5px',
-                            cursor: 'pointer',
-                            fontSize: '0.85rem'
-                          }}
-                        >
-                          💬 Reply
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ padding: '3rem', textAlign: 'center', color: '#999' }}>
-                  <p>📭 No messages yet</p>
-                </div>
               )}
             </div>
           </div>

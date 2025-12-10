@@ -69,6 +69,28 @@ class User(db.Model):
             'created_at': self.created_at.isoformat()
         }
 
+class FriendRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    from_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    to_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    status = db.Column(db.String(20), default='pending')  # pending, accepted, rejected
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    from_user = db.relationship('User', foreign_keys=[from_user_id], backref='sent_friend_requests')
+    to_user = db.relationship('User', foreign_keys=[to_user_id], backref='received_friend_requests')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'from_user_id': self.from_user_id,
+            'to_user_id': self.to_user_id,
+            'from_user': self.from_user.to_dict() if self.from_user else None,
+            'to_user': self.to_user.to_dict() if self.to_user else None,
+            'status': self.status,
+            'created_at': self.created_at.isoformat()
+        }
+
 class Doctor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -126,6 +148,9 @@ class MoodEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     mood_level = db.Column(db.Integer, nullable=False)  # 1-5
+    energy_level = db.Column(db.Integer)  # 1-5
+    stress_level = db.Column(db.Integer)  # 1-5
+    social_connection = db.Column(db.Integer)  # 1-5
     date = db.Column(db.Date, nullable=False, default=datetime.utcnow().date)
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -136,6 +161,9 @@ class MoodEntry(db.Model):
             'id': self.id,
             'user_id': self.user_id,
             'mood_level': self.mood_level,
+            'energy_level': self.energy_level,
+            'stress_level': self.stress_level,
+            'social_connection': self.social_connection,
             'date': self.date.isoformat() if self.date else None,
             'notes': self.notes,
             'created_at': self.created_at.isoformat() if self.created_at else None
@@ -415,4 +443,84 @@ class Notification(db.Model):
             'related_user': self.related_user.to_dict() if self.related_user else None,
             'is_read': self.is_read,
             'created_at': self.created_at.isoformat()
+        }
+
+
+# New chat models
+class ChatThread(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    type = db.Column(db.String(20), nullable=False)  # 'user_user' or 'user_doctor'
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    other_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    messages = db.relationship('Message', backref='thread', lazy=True, cascade='all, delete-orphan')
+    user = db.relationship('User', foreign_keys=[user_id], backref='owned_threads')
+    other_user = db.relationship('User', foreign_keys=[other_user_id], backref='other_threads')
+    doctor = db.relationship('Doctor', foreign_keys=[doctor_id], backref='doctor_threads')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'type': self.type,
+            'thread_type': self.type,
+            'user_id': self.user_id,
+            'other_user_id': self.other_user_id,
+            'doctor_id': self.doctor_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'participants': self.get_participants()
+        }
+
+    def get_participants(self):
+        participants = []
+        if self.user:
+            participants.append(self.user.to_dict())
+        if self.type == 'user_user' and self.other_user:
+            participants.append(self.other_user.to_dict())
+        elif self.type == 'user_doctor' and self.doctor and self.doctor.user:
+            participants.append(self.doctor.user.to_dict())
+        return participants
+
+class Message(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    thread_id = db.Column(db.Integer, db.ForeignKey('chat_thread.id'), nullable=False)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_read = db.Column(db.Boolean, default=False)
+    read_at = db.Column(db.DateTime, nullable=True)
+
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'thread_id': self.thread_id,
+            'sender_id': self.sender_id,
+            'sender': self.sender.to_dict() if self.sender else None,
+            'content': self.content,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'is_read': self.is_read,
+            'read_at': self.read_at.isoformat() if self.read_at else None
+        }
+
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    type = db.Column(db.String(20), nullable=False)  # 'message' | 'chat_request' | 'journal'
+    ref_type = db.Column(db.String(30), nullable=True)
+    ref_id = db.Column(db.Integer, nullable=True)
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'type': self.type,
+            'ref_type': self.ref_type,
+            'ref_id': self.ref_id,
+            'is_read': self.is_read,
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }

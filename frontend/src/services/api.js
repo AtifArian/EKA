@@ -39,9 +39,8 @@ export const searchUsers = (query) => api.get(`/users/search?q=${query}`).then(r
 export const getFriends = () => api.get('/users/friends').then(res => res.data);
 export const addFriend = (friendId) => api.post(`/users/friends/${friendId}`).then(res => res.data);
 export const removeFriend = (friendId) => api.delete(`/users/friends/${friendId}`).then(res => res.data);
-export const sendFriendRequest = (toUserId, message = '') => api.post('/users/friend-request/send', { to_user_id: toUserId, message }).then(res => res.data);
-export const respondToFriendRequest = (requestId, action) => api.post(`/users/friend-request/${requestId}/respond`, { action }).then(res => res.data);
 export const getFriendRequests = () => api.get('/users/friend-requests').then(res => res.data);
+export const handleFriendRequest = (requestId, action) => api.put(`/users/friend-requests/${requestId}`, { action }).then(res => res.data);
 export const updateProfile = (data) => api.put('/users/profile', data).then(res => res.data);
 export const uploadProfilePicture = (file) => {
   const formData = new FormData();
@@ -70,6 +69,19 @@ export const getPatientDetail = (patientId) => api.get(`/doctors/patients/${pati
 export const getChatRequests = () => api.get('/doctors/chat-requests').then(res => res.data);
 export const updateChatRequest = (requestId, data) => api.put(`/doctors/chat-requests/${requestId}`, data).then(res => res.data);
 
+// Chat feature
+export const createUserUserThread = (recipient_user_id) => api.post('/messages/threads/user-user', { recipient_user_id }).then(res => res.data);
+export const listThreads = () => api.get('/messages/threads').then(res => res.data);
+export const getThreadMessages = (threadId) => api.get(`/messages/threads/${threadId}/messages`).then(res => res.data);
+export const postThreadMessage = (threadId, content) => api.post(`/messages/threads/${threadId}/messages`, { content }).then(res => res.data);
+export const markThreadRead = (threadId) => api.put(`/messages/threads/${threadId}/read`).then(res => res.data);
+export const deleteThread = (threadId) => api.delete(`/messages/threads/${threadId}`).then(res => res.data);
+export const createDoctorChatRequest = (to_doctor_id, message) => api.post('/doctors/chat-requests', { to_doctor_id, message }).then(res => res.data);
+
+// Notifications
+export const getNotificationCounts = () => api.get('/notifications').then(res => res.data);
+export const markNotificationsRead = (scope) => api.put('/notifications/read', { scope }).then(res => res.data);
+
 export const getArticles = (params) => {
   const query = new URLSearchParams(params).toString();
   return api.get(`/articles?${query}`).then(res => res.data);
@@ -95,11 +107,5 @@ export const updateJournal = (journalId, data) => api.put(`/journals/${journalId
 export const deleteJournal = (journalId) => api.delete(`/journals/${journalId}`).then(res => res.data);
 export const heartJournal = (journalId) => api.post(`/journals/${journalId}/heart`).then(res => res.data);
 export const addJournalComment = (journalId, data) => api.post(`/journals/${journalId}/comments`, data).then(res => res.data);
-
-// Notifications
-export const getNotifications = () => api.get('/notifications').then(res => res.data);
-export const markNotificationAsRead = (notificationId) => api.put(`/notifications/${notificationId}/read`).then(res => res.data);
-export const markAllNotificationsAsRead = () => api.put('/notifications/read-all').then(res => res.data);
-export const getUnreadNotificationCount = () => api.get('/notifications/count').then(res => res.data);
 
 export default api;

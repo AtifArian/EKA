@@ -44,50 +44,6 @@ def check_today_mood():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
-@mood_bp.route('', methods=['POST'])
-@jwt_required()
-def create_mood_entry():
-    """Create or update today's mood entry"""
-    try:
-        current_user_id = int(get_jwt_identity())
-        data = request.get_json()
-        
-        mood_level = data.get('mood_level')
-        if not mood_level or mood_level not in [1, 2, 3, 4, 5]:
-            return jsonify({'error': 'Invalid mood level (1-5)'}), 400
-        
-        today = datetime.utcnow().date()
-        
-        mood = MoodEntry.query.filter_by(
-            user_id=current_user_id,
-            date=today
-        ).first()
-        
-        if mood:
-            mood.mood_level = mood_level
-            mood.notes = data.get('notes')
-        else:
-            mood = MoodEntry(
-                user_id=current_user_id,
-                mood_level=mood_level,
-                date=today,
-                notes=data.get('notes')
-            )
-            db.session.add(mood)
-        
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Mood entry saved',
-            'mood': mood.to_dict()
-        }), 201
-        
-    except Exception as e:
-        print(f"ERROR in create_mood_entry: {str(e)}")
-        print(traceback.format_exc())
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
 @mood_bp.route('', methods=['GET'])
 @jwt_required()
 def get_mood_entries():
@@ -108,4 +64,58 @@ def get_mood_entries():
     except Exception as e:
         print(f"ERROR in get_mood_entries: {str(e)}")
         print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@mood_bp.route('', methods=['POST'])
+@jwt_required()
+def create_mood_entry():
+    """Create or update today's mood entry"""
+    try:
+        current_user_id = int(get_jwt_identity())
+        data = request.get_json()
+        
+        mood_level = data.get('mood_level')
+        if not mood_level or mood_level not in [1, 2, 3, 4, 5]:
+            return jsonify({'error': 'Invalid mood level (1-5)'}), 400
+
+        energy_level = data.get('energy_level')
+        stress_level = data.get('stress_level')
+        social_connection = data.get('social_connection')
+        
+        today = datetime.utcnow().date()
+        
+        mood = MoodEntry.query.filter_by(
+            user_id=current_user_id,
+            date=today
+        ).first()
+        
+        if mood:
+            mood.mood_level = mood_level
+            mood.energy_level = energy_level
+            mood.stress_level = stress_level
+            mood.social_connection = social_connection
+            mood.notes = data.get('notes')
+        else:
+            mood = MoodEntry(
+                user_id=current_user_id,
+                mood_level=mood_level,
+                energy_level=energy_level,
+                stress_level=stress_level,
+                social_connection=social_connection,
+                date=today,
+                notes=data.get('notes')
+            )
+            db.session.add(mood)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Mood entry saved',
+            'mood': mood.to_dict()
+        }), 201
+        
+    except Exception as e:
+        print(f"ERROR in create_mood_entry: {str(e)}")
+        print(traceback.format_exc())
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500

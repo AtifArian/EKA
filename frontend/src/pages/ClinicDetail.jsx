@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getClinicDetail, bookSession, addClinicReview, sendFriendRequest } from '../services/api';
-import api from '../services/api';
+import { getClinicDetail, bookSession, addClinicReview, createDoctorChatRequest } from '../services/api';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix Leaflet default icon issue
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
+  iconUrl: require('leaflet/dist/images/marker-icon.png'),
+  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
+});
 
 function ClinicDetail({ user }) {
   const { id } = useParams();
@@ -10,11 +20,7 @@ function ClinicDetail({ user }) {
   const [showBooking, setShowBooking] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
-  const [showChatRequest, setShowChatRequest] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
-  const [chatRequestNote, setChatRequestNote] = useState('');
-  const [chatRequestLoading, setChatRequestLoading] = useState(false);
-  const [friendRequestLoading, setFriendRequestLoading] = useState(false);
   const [bookingData, setBookingData] = useState({
     appointment_date: '',
     notes: ''
@@ -23,6 +29,7 @@ function ClinicDetail({ user }) {
     rating: 5,
     comment: ''
   });
+  const [sendingChatReq, setSendingChatReq] = useState(false);
 
   useEffect(() => {
     fetchClinicDetail();
@@ -101,71 +108,19 @@ function ClinicDetail({ user }) {
     }
   };
 
-  const handleSendChatRequest = async (e) => {
-    e.preventDefault();
-    
+  const handleRequestChat = async () => {
     if (!user) {
       navigate('/login');
       return;
     }
-
-    if (user.is_doctor) {
-      alert('Doctors cannot send chat requests');
-      return;
-    }
-
-    if (!chatRequestNote.trim()) {
-      alert('Please provide a reason for your chat request');
-      return;
-    }
-
     try {
-      setChatRequestLoading(true);
-      const response = await api.post('/messages/chat-request/send', {
-        doctor_id: clinic.id,
-        message: chatRequestNote
-      });
-
-      alert('Chat request sent successfully! The doctor will review it soon.');
-      setChatRequestNote('');
-      setShowChatRequest(false);
+      setSendingChatReq(true);
+      await createDoctorChatRequest(clinic.user.id, 'Hi, I would like to chat.');
+      alert('Chat request sent! The doctor will see it in Chat Requests.');
     } catch (error) {
-      console.error('Error sending request:', error);
       alert(error.response?.data?.error || 'Failed to send chat request');
     } finally {
-      setChatRequestLoading(false);
-    }
-  };
-
-  const handleSendFriendRequest = async () => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-
-    if (user.is_doctor) {
-      alert('Doctors cannot send friend requests to other doctors');
-      return;
-    }
-
-    // Prevent users from sending friend request to themselves
-    if (user.id === clinic.user_id) {
-      alert('You cannot send a friend request to yourself');
-      return;
-    }
-
-    try {
-      setFriendRequestLoading(true);
-      
-      await sendFriendRequest(clinic.user_id);
-      
-      alert('Friend request sent successfully!');
-    } catch (error) {
-      console.error('Error sending friend request:', error);
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to send friend request';
-      alert(errorMessage);
-    } finally {
-      setFriendRequestLoading(false);
+      setSendingChatReq(false);
     }
   };
 
@@ -272,6 +227,22 @@ function ClinicDetail({ user }) {
           }}>
             "{clinic.quote || 'Dedicated to your mental wellness'}"
           </blockquote>
+
+          {user && !user.is_doctor && (
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.2rem' }}>
+              <button onClick={() => setShowBooking(true)} className="book-now-btn">
+                Book Now
+              </button>
+              <button
+                onClick={handleRequestChat}
+                disabled={sendingChatReq}
+                className="submit-btn"
+                style={{ width: 'auto' }}
+              >
+                {sendingChatReq ? 'Sending...' : 'Request Chat'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -292,7 +263,7 @@ function ClinicDetail({ user }) {
         </div>
       </div>
 
-      {(embedUrl || (clinic.latitude && clinic.longitude)) && (
+      {(clinic.latitude && clinic.longitude) && (
         <div style={{ 
           background: 'white', 
           borderRadius: '20px', 
@@ -301,26 +272,28 @@ function ClinicDetail({ user }) {
           boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
         }}>
           <h2 style={{ marginBottom: '1rem' }}>Clinic Location</h2>
-          {embedUrl ? (
-            <iframe
-              width="100%"
-              height="400"
-              frameBorder="0"
-              src={embedUrl}
-              allowFullScreen
-              style={{ borderRadius: '15px', border: '0' }}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            ></iframe>
-          ) : (
-            <iframe
-              width="100%"
-              height="400"
-              frameBorder="0"
-              src={`https://www.google.com/maps?q=${clinic.latitude},${clinic.longitude}&z=15&output=embed`}
-              style={{ borderRadius: '15px', border: '0' }}
-              loading="lazy"
-            ></iframe>
+          <div style={{
+            height: '400px',
+            borderRadius: '15px',
+            overflow: 'hidden',
+            border: '2px solid #e0e0e0'
+          }}>
+            <MapContainer
+              center={[clinic.latitude, clinic.longitude]}
+              zoom={15}
+              style={{ height: '100%', width: '100%' }}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <Marker position={[clinic.latitude, clinic.longitude]} />
+            </MapContainer>
+          </div>
+          {clinic.location && (
+            <p style={{ marginTop: '1rem', color: '#666', fontSize: '0.95rem' }}>
+              📍 <strong>{clinic.location}</strong>
+            </p>
           )}
         </div>
       )}
@@ -328,21 +301,11 @@ function ClinicDetail({ user }) {
       <div className="comments-section" style={{ marginTop: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2>Reviews ({clinic.reviews.length})</h2>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            {user && !user.is_doctor && (
-              <>
-                <button onClick={() => setShowChatRequest(true)} className="submit-btn" style={{ width: 'auto', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-                  💬 Chat with Doctor
-                </button>
-                <button onClick={handleSendFriendRequest} disabled={friendRequestLoading} className="submit-btn" style={{ width: 'auto', background: 'linear-gradient(135deg, #11a467 0%, #1a7a53 100%)' }}>
-                  {friendRequestLoading ? '⏳ Sending...' : '👥 Add Friend'}
-                </button>
-                <button onClick={() => setShowReview(true)} className="submit-btn" style={{ width: 'auto' }}>
-                  Write Review
-                </button>
-              </>
-            )}
-          </div>
+          {user && !user.is_doctor && (
+            <button onClick={() => setShowReview(true)} className="submit-btn" style={{ width: 'auto' }}>
+              Write Review
+            </button>
+          )}
         </div>
 
         {clinic.reviews.map(review => (
@@ -364,9 +327,13 @@ function ClinicDetail({ user }) {
         ))}
       </div>
 
-      <button onClick={() => setShowBooking(true)} className="book-now-btn">
-        Book Now
-      </button>
+      {!user && (
+        <div style={{ marginTop: '1rem' }}>
+          <button onClick={() => setShowBooking(true)} className="book-now-btn">
+            Book Now
+          </button>
+        </div>
+      )}
 
       {showBooking && (
         <div style={{
@@ -567,66 +534,8 @@ function ClinicDetail({ user }) {
           </div>
         </div>
       )}
-
-      {showChatRequest && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999
-        }}>
-          <div className="form-container">
-            <h2>Send Chat Request</h2>
-            <form onSubmit={handleSendChatRequest}>
-              <div className="form-group">
-                <label>Why do you want to chat with this doctor?</label>
-                <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>
-                  Please describe your concerns or reason for chatting. This will help the doctor understand your needs.
-                </p>
-                <textarea
-                  value={chatRequestNote}
-                  onChange={(e) => setChatRequestNote(e.target.value)}
-                  placeholder="Describe your concerns, symptoms, or questions..."
-                  rows="5"
-                  style={{
-                    width: '100%',
-                    padding: '0.8rem',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '10px',
-                    fontSize: '1rem',
-                    fontFamily: 'inherit',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-              <button 
-                type="submit" 
-                className="submit-btn"
-                disabled={chatRequestLoading}
-              >
-                {chatRequestLoading ? 'Sending...' : 'Send Chat Request'}
-              </button>
-              <button 
-                type="button" 
-                onClick={() => setShowChatRequest(false)} 
-                style={{ marginTop: '1rem', background: '#ccc' }} 
-                className="submit-btn"
-              >
-                Cancel
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
 export default ClinicDetail;
-
