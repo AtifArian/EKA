@@ -18,6 +18,7 @@ def chatbot_response():
     try:
         data = request.get_json()
         user_message = data.get('message', '').strip()
+        is_first_message = data.get('isFirstMessage', False)
         
         if not user_message:
             return jsonify({'error': 'Message is required'}), 400
@@ -30,9 +31,35 @@ def chatbot_response():
         # Configure Gemini
         genai.configure(api_key=GEMINI_API_KEY)
         
-        # Create comprehensive system prompt
-        system_prompt = """You are the EKA Mental Wellness Platform assistant - a warm, empathetic, and helpful chatbot. Your role is to guide users through the platform and provide mental health support.
+        # Create comprehensive system prompt with context about introduction
+        introduction_context = ""
+        if is_first_message:
+            introduction_context = """
+IMPORTANT: This is the user's FIRST message. Start with a warm welcome:
+- Greet them warmly (say hello/hi)
+- Introduce yourself and explain that EKA stands for "Ease, Kindness, Awareness"
+- Briefly mention the main platform features (Clinics, Articles, Journals, My Profile)
+- Then address their specific question/concern
 
+"""
+        else:
+            introduction_context = """
+IMPORTANT: The user has already been introduced to EKA in a previous message. 
+- DO NOT say "hello", "hi", "welcome" or any greeting again
+- DO NOT re-introduce yourself or the platform
+- DO NOT explain what EKA stands for again
+- DO NOT list all platform features unless specifically asked
+- Jump directly to answering their current question or concern
+- Only mention specific platform features if directly relevant to their question
+- Keep responses focused and concise
+- Continue the conversation naturally as if you're already talking to them
+
+"""
+        
+        # Create comprehensive system prompt
+        system_prompt = f"""You are the EKA Mental Wellness Platform assistant - a warm, empathetic, and helpful chatbot. Your role is to guide users through the platform and provide mental health support.
+
+{introduction_context}
 About EKA Platform:
 - EKA stands for "Ease, Kindness, Awareness"
 - It's a mental wellness platform connecting users with mental health professionals
