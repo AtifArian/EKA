@@ -47,7 +47,7 @@ def analyze_sentiment(text: str) -> float:
         # Check for critical mental health keywords first
         text_lower = text.lower()
         critical_keywords = [
-            'suicid', 'kill myself', 'end my life', 'want to die', 
+            'suicide', 'kill myself', 'end my life', 'want to die', 
             'self harm', 'self-harm', 'cut myself', 'no point living',
             'better off dead', 'hopeless', 'can\'t go on'
         ]
@@ -72,7 +72,7 @@ def analyze_emotion(text: str) -> str:
 
     # --- SAFETY OVERRIDES for crisis detection ---
     crisis_keywords = [
-        'suicid', 'kill myself', 'end my life', 'want to die', 'self harm',
+        'suicide', 'kill myself', 'end my life', 'want to die', 'self harm',
         'self-harm', 'no point living', 'better off dead', 'hopeless', 'can’t go on'
     ]
     if any(k in text_lower for k in crisis_keywords):

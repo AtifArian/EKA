@@ -1,6 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getClinicDetail, bookSession, addClinicReview } from '../services/api';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix Leaflet default icon issue
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
+  iconUrl: require('leaflet/dist/images/marker-icon.png'),
+  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
+});
 
 function ClinicDetail({ user }) {
   const { id } = useParams();
@@ -219,7 +230,7 @@ function ClinicDetail({ user }) {
         </div>
       </div>
 
-      {(embedUrl || (clinic.latitude && clinic.longitude)) && (
+      {(clinic.latitude && clinic.longitude) && (
         <div style={{ 
           background: 'white', 
           borderRadius: '20px', 
@@ -228,26 +239,28 @@ function ClinicDetail({ user }) {
           boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
         }}>
           <h2 style={{ marginBottom: '1rem' }}>Clinic Location</h2>
-          {embedUrl ? (
-            <iframe
-              width="100%"
-              height="400"
-              frameBorder="0"
-              src={embedUrl}
-              allowFullScreen
-              style={{ borderRadius: '15px', border: '0' }}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            ></iframe>
-          ) : (
-            <iframe
-              width="100%"
-              height="400"
-              frameBorder="0"
-              src={`https://www.google.com/maps?q=${clinic.latitude},${clinic.longitude}&z=15&output=embed`}
-              style={{ borderRadius: '15px', border: '0' }}
-              loading="lazy"
-            ></iframe>
+          <div style={{
+            height: '400px',
+            borderRadius: '15px',
+            overflow: 'hidden',
+            border: '2px solid #e0e0e0'
+          }}>
+            <MapContainer
+              center={[clinic.latitude, clinic.longitude]}
+              zoom={15}
+              style={{ height: '100%', width: '100%' }}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <Marker position={[clinic.latitude, clinic.longitude]} />
+            </MapContainer>
+          </div>
+          {clinic.location && (
+            <p style={{ marginTop: '1rem', color: '#666', fontSize: '0.95rem' }}>
+              📍 <strong>{clinic.location}</strong>
+            </p>
           )}
         </div>
       )}
