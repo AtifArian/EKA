@@ -369,3 +369,26 @@ class Message(db.Model):
             'is_read': self.is_read,
             'created_at': self.created_at.isoformat()
         }
+
+class FriendRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    from_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    to_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    message = db.Column(db.Text)
+    status = db.Column(db.String(20), default='pending')  # pending, accepted, rejected
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    responded_at = db.Column(db.DateTime)
+    
+    from_user = db.relationship('User', foreign_keys=[from_user_id], backref='sent_friend_requests')
+    to_user = db.relationship('User', foreign_keys=[to_user_id], backref='received_friend_requests')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'from_user': self.from_user.to_dict(),
+            'to_user': self.to_user.to_dict(),
+            'message': self.message,
+            'status': self.status,
+            'created_at': self.created_at.isoformat(),
+            'responded_at': self.responded_at.isoformat() if self.responded_at else None
+        }

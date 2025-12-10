@@ -16,7 +16,9 @@ import {
   getMyArticles,
   deleteArticle,
   uploadProfilePicture,
-  deleteProfilePicture
+  deleteProfilePicture,
+  getFriendRequests,
+  respondToFriendRequest
 } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -28,10 +30,12 @@ function MyProfile({ user, setUser }) {
   const [articles, setArticles] = useState([]);
   const [patients, setPatients] = useState([]);
   const [chatRequests, setChatRequests] = useState([]);
+  const [friendRequests, setFriendRequests] = useState([]);
   const [doctorProfile, setDoctorProfile] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showJournalForm, setShowJournalForm] = useState(false);
+  const [respondingTo, setRespondingTo] = useState(null);
   
   const [journalForm, setJournalForm] = useState({
     title: '',
@@ -77,6 +81,9 @@ function MyProfile({ user, setUser }) {
       } else if (activeTab === 'chat-requests' && user.is_doctor) {
         const data = await getChatRequests();
         setChatRequests(data);
+      } else if (activeTab === 'friend-requests' && user.is_doctor) {
+        const data = await getFriendRequests();
+        setFriendRequests(data);
       } else if (activeTab === 'clinic-profile' && user.is_doctor) {
         try {
           const profile = await getDoctorProfile();
@@ -262,6 +269,20 @@ function MyProfile({ user, setUser }) {
       loadData();
     } catch (error) {
       alert('Failed to update chat request');
+    }
+  };
+
+  const handleFriendRequestAction = async (requestId, action) => {
+    try {
+      setRespondingTo(requestId);
+      await respondToFriendRequest(requestId, action);
+      alert(`Friend request ${action}ed!`);
+      loadData();
+    } catch (error) {
+      console.error('Error responding to friend request:', error);
+      alert(error.response?.data?.error || 'Failed to respond to friend request');
+    } finally {
+      setRespondingTo(null);
     }
   };
 
@@ -510,6 +531,21 @@ function MyProfile({ user, setUser }) {
                 }}
               >
                 💬 Chat Requests
+              </button>
+              <button
+                onClick={() => setActiveTab('friend-requests')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '1rem 1.5rem',
+                  fontSize: '1.05rem',
+                  fontWeight: '600',
+                  color: activeTab === 'friend-requests' ? '#7F7FD5' : '#999',
+                  borderBottom: activeTab === 'friend-requests' ? '3px solid #7F7FD5' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                👥 Friend Requests
               </button>
               <button
                 onClick={() => setActiveTab('chat-inbox')}
@@ -812,6 +848,75 @@ function MyProfile({ user, setUser }) {
                 borderRadius: '15px'
               }}>
                 <p style={{ fontSize: '1.1rem' }}>No pending chat requests</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Friend Requests Tab (Doctor) */}
+        {activeTab === 'friend-requests' && user.is_doctor && (
+          <div>
+            <h2 style={{ marginBottom: '1.5rem' }}>Friend Requests</h2>
+            
+            {friendRequests.filter(r => r.status === 'pending').length > 0 ? (
+              friendRequests.filter(r => r.status === 'pending').map(request => (
+                <div key={request.id} style={{
+                  background: '#f8f9fa',
+                  padding: '1.5rem',
+                  borderRadius: '15px',
+                  marginBottom: '1rem'
+                }}>
+                  <h3 style={{ color: '#333', marginBottom: '0.5rem' }}>
+                    From: {request.from_user.full_name || request.from_user.username}
+                  </h3>
+                  {request.message && (
+                    <p style={{ color: '#666', marginBottom: '1rem' }}>{request.message}</p>
+                  )}
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <button
+                      onClick={() => handleFriendRequestAction(request.id, 'accept')}
+                      disabled={respondingTo === request.id}
+                      style={{
+                        background: '#4CAF50',
+                        color: 'white',
+                        border: 'none',
+                        padding: '0.6rem 1.5rem',
+                        borderRadius: '10px',
+                        cursor: respondingTo === request.id ? 'not-allowed' : 'pointer',
+                        fontWeight: '600',
+                        opacity: respondingTo === request.id ? 0.6 : 1
+                      }}
+                    >
+                      {respondingTo === request.id ? 'Processing...' : 'Accept'}
+                    </button>
+                    <button
+                      onClick={() => handleFriendRequestAction(request.id, 'reject')}
+                      disabled={respondingTo === request.id}
+                      style={{
+                        background: '#e74c3c',
+                        color: 'white',
+                        border: 'none',
+                        padding: '0.6rem 1.5rem',
+                        borderRadius: '10px',
+                        cursor: respondingTo === request.id ? 'not-allowed' : 'pointer',
+                        fontWeight: '600',
+                        opacity: respondingTo === request.id ? 0.6 : 1
+                      }}
+                    >
+                      {respondingTo === request.id ? 'Processing...' : 'Reject'}
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '3rem', 
+                color: '#999',
+                background: '#f8f9fa',
+                borderRadius: '15px'
+              }}>
+                <p style={{ fontSize: '1.1rem' }}>No pending friend requests</p>
               </div>
             )}
           </div>

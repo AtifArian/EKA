@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getClinicDetail, bookSession, addClinicReview } from '../services/api';
+import { getClinicDetail, bookSession, addClinicReview, sendFriendRequest } from '../services/api';
 import api from '../services/api';
 
 function ClinicDetail({ user }) {
@@ -14,6 +14,7 @@ function ClinicDetail({ user }) {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [chatRequestNote, setChatRequestNote] = useState('');
   const [chatRequestLoading, setChatRequestLoading] = useState(false);
+  const [friendRequestLoading, setFriendRequestLoading] = useState(false);
   const [bookingData, setBookingData] = useState({
     appointment_date: '',
     notes: ''
@@ -133,6 +134,32 @@ function ClinicDetail({ user }) {
       alert(error.response?.data?.error || 'Failed to send chat request');
     } finally {
       setChatRequestLoading(false);
+    }
+  };
+
+  const handleSendFriendRequest = async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    if (user.is_doctor) {
+      alert('Doctors cannot send friend requests to other doctors');
+      return;
+    }
+
+    try {
+      setFriendRequestLoading(true);
+      
+      await sendFriendRequest(clinic.user_id);
+      
+      alert('Friend request sent successfully!');
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to send friend request';
+      alert(errorMessage);
+    } finally {
+      setFriendRequestLoading(false);
     }
   };
 
@@ -300,6 +327,9 @@ function ClinicDetail({ user }) {
               <>
                 <button onClick={() => setShowChatRequest(true)} className="submit-btn" style={{ width: 'auto', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
                   💬 Chat with Doctor
+                </button>
+                <button onClick={handleSendFriendRequest} disabled={friendRequestLoading} className="submit-btn" style={{ width: 'auto', background: 'linear-gradient(135deg, #11a467 0%, #1a7a53 100%)' }}>
+                  {friendRequestLoading ? '⏳ Sending...' : '👥 Add Friend'}
                 </button>
                 <button onClick={() => setShowReview(true)} className="submit-btn" style={{ width: 'auto' }}>
                   Write Review

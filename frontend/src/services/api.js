@@ -39,6 +39,9 @@ export const searchUsers = (query) => api.get(`/users/search?q=${query}`).then(r
 export const getFriends = () => api.get('/users/friends').then(res => res.data);
 export const addFriend = (friendId) => api.post(`/users/friends/${friendId}`).then(res => res.data);
 export const removeFriend = (friendId) => api.delete(`/users/friends/${friendId}`).then(res => res.data);
+export const sendFriendRequest = (toUserId, message = '') => api.post('/users/friend-request/send', { to_user_id: toUserId, message }).then(res => res.data);
+export const respondToFriendRequest = (requestId, action) => api.post(`/users/friend-request/${requestId}/respond`, { action }).then(res => res.data);
+export const getFriendRequests = () => api.get('/users/friend-requests').then(res => res.data);
 export const updateProfile = (data) => api.put('/users/profile', data).then(res => res.data);
 export const uploadProfilePicture = (file) => {
   const formData = new FormData();
