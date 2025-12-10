@@ -62,8 +62,11 @@ def create_app(config_class=Config):
         allowed_origins.append(frontend_url)
     
     # Configure CORS with proper settings for production
+    # For local testing with Postman, use origins="*"
+    is_local_dev = os.environ.get('FLASK_ENV') == 'development' or not database_url
+    
     CORS(app, 
-         origins=allowed_origins,
+         origins="*" if is_local_dev else allowed_origins,
          allow_headers=["Content-Type", "Authorization"],
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
          expose_headers=["Content-Type", "Authorization"],
@@ -111,6 +114,7 @@ def create_app(config_class=Config):
     from app.routes.articles import articles_bp
     from app.routes.journals import journals_bp
     from app.routes.mood import mood_bp
+    from app.routes.chatbot import chatbot_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api/users')
@@ -119,6 +123,7 @@ def create_app(config_class=Config):
     app.register_blueprint(articles_bp, url_prefix='/api/articles')
     app.register_blueprint(journals_bp, url_prefix='/api/journals')
     app.register_blueprint(mood_bp, url_prefix='/api/mood')
+    app.register_blueprint(chatbot_bp, url_prefix='/api')
     
     # Serve uploaded files
     from flask import send_from_directory

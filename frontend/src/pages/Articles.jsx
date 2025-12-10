@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getArticles } from '../services/api';
 import ArticleTile from '../components/ArticleTile';
+import Chatbot from '../components/Chatbot';
 
 function Articles({ user }) {
   const [articles, setArticles] = useState([]);
@@ -59,6 +60,7 @@ function Articles({ user }) {
           ))}
         </div>
       )}
+      <Chatbot />
     </div>
   );
 }
