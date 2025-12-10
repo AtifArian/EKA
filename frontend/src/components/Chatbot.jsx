@@ -56,7 +56,9 @@ function Chatbot() {
       }
 
       // Call backend API for Gemini response
-      const response = await fetch('http://127.0.0.1:5050/api/chatbot', {
+      const rawApi = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5050/api';
+      const apiUrl = rawApi.endsWith('/api') ? rawApi : `${rawApi}/api`;
+      const response = await fetch(`${apiUrl}/chatbot`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -79,7 +81,6 @@ function Chatbot() {
         content: data.response || 'I apologize, but I encountered an error. Please try again.'
       }]);
     } catch (error) {
-      console.error('Chatbot error:', error);
       setMessages(prev => [...prev, {
         role: 'bot',
         content: 'I\'m sorry, I\'m having trouble connecting right now. Please try again in a moment.'

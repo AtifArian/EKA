@@ -10,7 +10,7 @@ except ImportError:
 chatbot_bp = Blueprint('chatbot', __name__)
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-preview-09-2025")
 
 @chatbot_bp.route('/chatbot', methods=['POST'])
 def chatbot_response():
