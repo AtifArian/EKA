@@ -127,6 +127,12 @@ function DoctorProfile({ user }) {
       return;
     }
 
+    // Prevent users from sending friend request to themselves
+    if (user.id === doctor.user_id) {
+      alert('You cannot send a friend request to yourself');
+      return;
+    }
+
     try {
       setFriendRequestLoading(true);
       
@@ -159,7 +165,7 @@ function DoctorProfile({ user }) {
         >
           👨‍⚕️ Profile
         </button>
-        {user?.is_doctor && (
+        {user?.is_doctor && doctor?.user_id === user?.id && (
           <>
             <button
               className={`tab-button ${activeTab === 'chat-requests' ? 'active' : ''}`}
@@ -318,8 +324,8 @@ function DoctorProfile({ user }) {
         </div>
       )}
 
-      {/* Chat Requests Tab (for doctors only) */}
-      {activeTab === 'chat-requests' && user?.is_doctor && (
+      {/* Chat Requests Tab (for own doctor profile only) */}
+      {activeTab === 'chat-requests' && user?.is_doctor && doctor?.user_id === user?.id && (
         <div className="chat-requests-content">
           {chatRequests.length === 0 ? (
             <div className="empty-state">
@@ -370,8 +376,8 @@ function DoctorProfile({ user }) {
         </div>
       )}
 
-      {/* Friend Requests Tab (for doctors only) */}
-      {activeTab === 'friend-requests' && user?.is_doctor && (
+      {/* Friend Requests Tab (for own doctor profile only) */}
+      {activeTab === 'friend-requests' && user?.is_doctor && doctor?.user_id === user?.id && (
         <div className="friend-requests-content">
           {friendRequests.length === 0 ? (
             <div className="empty-state">

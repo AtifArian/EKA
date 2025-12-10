@@ -9,7 +9,6 @@ import {
   deleteJournal,
   getPatients,
   getChatRequests,
-  updateChatRequest,
   createArticle,
   getDoctorProfile,
   updateDoctorProfile,
@@ -20,6 +19,7 @@ import {
   getFriendRequests,
   respondToFriendRequest
 } from '../services/api';
+import { respondToChatRequest } from '../services/messages';
 import { useNavigate } from 'react-router-dom';
 
 function MyProfile({ user, setUser }) {
@@ -262,12 +262,13 @@ function MyProfile({ user, setUser }) {
     }
   };
 
-  const handleChatRequestAction = async (requestId, status) => {
+  const handleChatRequestAction = async (requestId, action) => {
     try {
-      await updateChatRequest(requestId, { status });
-      alert(`Chat request ${status}!`);
+      await respondToChatRequest(requestId, action);
+      alert(`Chat request ${action}ed!`);
       loadData();
     } catch (error) {
+      console.error('Error responding to chat request:', error);
       alert('Failed to update chat request');
     }
   };
@@ -809,7 +810,7 @@ function MyProfile({ user, setUser }) {
                   <p style={{ color: '#666', marginBottom: '1rem' }}>{request.message}</p>
                   <div style={{ display: 'flex', gap: '1rem' }}>
                     <button
-                      onClick={() => handleChatRequestAction(request.id, 'accepted')}
+                      onClick={() => handleChatRequestAction(request.id, 'accept')}
                       style={{
                         background: '#4CAF50',
                         color: 'white',
@@ -823,7 +824,7 @@ function MyProfile({ user, setUser }) {
                       Accept
                     </button>
                     <button
-                      onClick={() => handleChatRequestAction(request.id, 'rejected')}
+                      onClick={() => handleChatRequestAction(request.id, 'reject')}
                       style={{
                         background: '#e74c3c',
                         color: 'white',

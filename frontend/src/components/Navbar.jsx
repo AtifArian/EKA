@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import NotificationBell from './NotificationBell';
 
 function Navbar({ user, onLogout }) {
   const navigate = useNavigate();
@@ -29,6 +30,13 @@ function Navbar({ user, onLogout }) {
         <Link to="/clinics">Clinics</Link>
         <Link to="/articles">Articles</Link>
         <Link to="/journals">Journals</Link>
+        
+        {user && (
+          <>
+            <Link to="/chats">💬 My Chats</Link>
+            <NotificationBell user={user} />
+          </>
+        )}
         
         {user ? (
           <>

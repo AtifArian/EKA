@@ -148,6 +148,12 @@ function ClinicDetail({ user }) {
       return;
     }
 
+    // Prevent users from sending friend request to themselves
+    if (user.id === clinic.user_id) {
+      alert('You cannot send a friend request to yourself');
+      return;
+    }
+
     try {
       setFriendRequestLoading(true);
       

@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models import db, User, Doctor, ChatRequest, Chat, Message
+from app.models import db, User, Doctor, ChatRequest, Chat, Message, Notification
 from datetime import datetime
 
 messages_bp = Blueprint('messages', __name__)
@@ -33,7 +33,7 @@ def send_chat_request():
     ).first()
     
     if existing_request:
-        return jsonify({'error': 'You already have a pending or active request with this doctor'}), 400
+        return jsonify({'error': 'You already have an active chat request with this doctor. Please wait for their response or use your existing chat.'}), 400
     
     # Create chat request
     chat_request = ChatRequest(
@@ -91,6 +91,16 @@ def respond_to_chat_request(request_id):
         )
         
         db.session.add(chat)
+        
+        # Create notification for the user who sent the chat request
+        notification = Notification(
+            user_id=chat_request.from_user_id,
+            type='chat_request_accepted',
+            title='Chat Request Accepted',
+            message=f'Your chat request with {doctor.user.full_name or doctor.user.username} has been accepted!',
+            related_user_id=current_user_id
+        )
+        db.session.add(notification)
         db.session.commit()
         
         return jsonify({

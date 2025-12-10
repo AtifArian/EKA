@@ -96,4 +96,10 @@ export const deleteJournal = (journalId) => api.delete(`/journals/${journalId}`)
 export const heartJournal = (journalId) => api.post(`/journals/${journalId}/heart`).then(res => res.data);
 export const addJournalComment = (journalId, data) => api.post(`/journals/${journalId}/comments`, data).then(res => res.data);
 
+// Notifications
+export const getNotifications = () => api.get('/notifications').then(res => res.data);
+export const markNotificationAsRead = (notificationId) => api.put(`/notifications/${notificationId}/read`).then(res => res.data);
+export const markAllNotificationsAsRead = () => api.put('/notifications/read-all').then(res => res.data);
+export const getUnreadNotificationCount = () => api.get('/notifications/count').then(res => res.data);
+
 export default api;

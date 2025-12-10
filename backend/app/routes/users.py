@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models import db, User, FriendRequest, Doctor
+from app.models import db, User, FriendRequest, Doctor, Notification
 from sqlalchemy import or_
 import os
 from datetime import datetime
@@ -222,6 +222,16 @@ def respond_to_friend_request(request_id):
         friend_request.from_user.friends.append(friend_request.to_user)
         friend_request.status = 'accepted'
         friend_request.responded_at = datetime.utcnow()
+        
+        # Create notification for the sender
+        notification = Notification(
+            user_id=friend_request.from_user_id,
+            type='friend_request_accepted',
+            title='Friend Request Accepted',
+            message=f'{friend_request.to_user.full_name or friend_request.to_user.username} accepted your friend request!',
+            related_user_id=current_user_id
+        )
+        db.session.add(notification)
     else:  # reject
         friend_request.status = 'rejected'
         friend_request.responded_at = datetime.utcnow()

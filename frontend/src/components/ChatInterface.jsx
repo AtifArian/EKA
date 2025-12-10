@@ -135,22 +135,29 @@ function ChatInterface({ chatId, user, onChatEnded }) {
             <p>No messages yet. Start the conversation!</p>
           </div>
         ) : (
-          messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`message ${msg.sender_id === user.id ? 'sent' : 'received'}`}
-            >
-              <div className="message-content">
-                <p>{msg.content}</p>
-                <span className="message-time">
-                  {new Date(msg.created_at).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </span>
+          messages.map((msg) => {
+            // Determine if message is from current user
+            const isCurrentUser = msg.sender_id === user.id;
+            const senderName = isCurrentUser ? 'You' : (isDoctor ? chat.user?.full_name : chat.doctor?.user?.full_name) || 'User';
+            
+            return (
+              <div
+                key={msg.id}
+                className={`message ${isCurrentUser ? 'sent' : 'received'}`}
+              >
+                <div className="message-bubble">
+                  <p className="message-sender">{senderName}</p>
+                  <p className="message-content">{msg.content}</p>
+                  <span className="message-time">
+                    {new Date(msg.created_at).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
         <div ref={messagesEndRef} />
       </div>
