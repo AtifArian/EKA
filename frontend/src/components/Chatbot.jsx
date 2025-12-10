@@ -5,11 +5,12 @@ function Chatbot() {
   const [messages, setMessages] = useState([
     {
       role: 'bot',
-      content: 'Hi! I\'m your EKA assistant. How can I help you today? 😊\n\nI can help you:\n• Navigate the website\n• Find and book doctors\n• Get mental health support\n• Learn about our services'
+      content: 'Hi! I\'m your EKA assistant. How can I help you today? 😊\n\nI can help you:\n• Navigate the website\n• Find to book doctors\n• Get mental health support\n• Learn about our services'
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [hasIntroduced, setHasIntroduced] = useState(false);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -29,7 +30,7 @@ function Chatbot() {
   const checkForCrisisKeywords = (text) => {
     const crisisKeywords = [
       'suicide', 'kill myself', 'end my life', 'want to die', 'self harm',
-      'self-harm', 'no point living', 'better off dead', 'hopeless', 
+      'self-harm', 'no point living', 'better off dead',, 
       'can\'t go on', 'cant live anymore', 'don\'t want to live', 'wanna die','kill','knife','poison','hang myself'
     ];
     return crisisKeywords.some(keyword => text.toLowerCase().includes(keyword));
@@ -60,10 +61,18 @@ function Chatbot() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ message: userMessage })
+        body: JSON.stringify({ 
+          message: userMessage,
+          isFirstMessage: !hasIntroduced
+        })
       });
 
       const data = await response.json();
+      
+      // Mark that introduction has been given after first user message
+      if (!hasIntroduced) {
+        setHasIntroduced(true);
+      }
       
       setMessages(prev => [...prev, {
         role: 'bot',
