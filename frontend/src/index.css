@@ -6,7 +6,7 @@
 
 :root {
   /* Figma Gradient Background Colors */
-  --bg-gradient: linear-gradient(135deg, #6B7DB8 0%, #8B87BA 25%, #A890BC 50%, #C59ABE 75%, #D8A8BE 100%);
+  --bg-gradient: linear-gradient(to right, #5871b1 0%, #7a85b7 33.33%, #b1a8bd 66.66%, #d7c1c3 100%);
   
   /* Primary Colors from Figma */
   --primary-purple: #7B85C4;
