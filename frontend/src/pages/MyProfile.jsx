@@ -2,7 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   searchUsers, 
   addFriend, 
+  removeFriend,
   getFriends,
+  getFriendRequests,
+  handleFriendRequest as handleFriendRequestAPI,
   getMyJournals,
   createJournal,
   updateJournal,
@@ -18,6 +21,16 @@ import {
   uploadProfilePicture,
   deleteProfilePicture
 } from '../services/api';
+import {
+  listThreads,
+  getThreadMessages,
+  postThreadMessage,
+  markThreadRead,
+  deleteThread,
+  createUserUserThread,
+  getNotificationCounts,
+  markNotificationsRead
+} from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import MapLocationPicker from '../components/MapLocationPicker';
 
@@ -25,6 +38,7 @@ function MyProfile({ user, setUser }) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(user?.is_doctor ? 'clinic-profile' : 'journals');
   const [friends, setFriends] = useState([]);
+  const [friendRequests, setFriendRequests] = useState([]);
   const [journals, setJournals] = useState([]);
   const [articles, setArticles] = useState([]);
   const [patients, setPatients] = useState([]);
@@ -62,12 +76,19 @@ function MyProfile({ user, setUser }) {
   });
 
   const [uploadingPicture, setUploadingPicture] = useState(false);
+  const [threads, setThreads] = useState([]);
+  const [selectedThreadId, setSelectedThreadId] = useState(null);
+  const [threadMessages, setThreadMessages] = useState([]);
+  const [messageText, setMessageText] = useState('');
+  const [notificationCounts, setNotificationCounts] = useState({ inbox: 0, chat_requests: 0 });
 
   const loadData = useCallback(async () => {
     try {
       if (activeTab === 'friends') {
         const data = await getFriends();
         setFriends(data);
+        const requests = await getFriendRequests();
+        setFriendRequests(requests);
       } else if (activeTab === 'journals') {
         const data = await getMyJournals();
         setJournals(data);
@@ -107,6 +128,12 @@ function MyProfile({ user, setUser }) {
         } catch (error) {
           console.log('No doctor profile yet:', error);
         }
+      } else if (activeTab === 'inbox') {
+        const data = await listThreads();
+        setThreads(data);
+        // reset thread view when switching into inbox
+        setSelectedThreadId(null);
+        setThreadMessages([]);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -120,6 +147,58 @@ function MyProfile({ user, setUser }) {
     }
     loadData();
   }, [user, activeTab, loadData, navigate]);
+
+  // Poll notification counts periodically
+  useEffect(() => {
+    let timer;
+    const poll = async () => {
+      try {
+        const counts = await getNotificationCounts();
+        if (counts) setNotificationCounts(counts);
+      } catch (e) {
+        // ignore polling errors
+      }
+    };
+    poll();
+    timer = setInterval(poll, 15000);
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [user]);
+
+  // Mark notifications read on tab entry
+  useEffect(() => {
+    const markRead = async () => {
+      try {
+        if (activeTab === 'inbox') {
+          await markNotificationsRead('inbox');
+        } else if (activeTab === 'chat-requests' && user?.is_doctor) {
+          await markNotificationsRead('chat_requests');
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    markRead();
+  }, [activeTab, user]);
+
+  // Poll messages when a thread is selected
+  useEffect(() => {
+    if (!selectedThreadId) return;
+    const loadMessages = async () => {
+      try {
+        const msgs = await getThreadMessages(selectedThreadId);
+        setThreadMessages(msgs);
+      } catch (e) {
+        console.error('Error loading messages:', e);
+      }
+    };
+    // Load immediately
+    loadMessages();
+    // Then poll every 3 seconds
+    const interval = setInterval(loadMessages, 3000);
+    return () => clearInterval(interval);
+  }, [selectedThreadId]);
 
   const handleUpdateClinicProfile = async (e) => {
     e.preventDefault();
@@ -150,12 +229,82 @@ function MyProfile({ user, setUser }) {
   const handleAddFriend = async (friendId) => {
     try {
       await addFriend(friendId);
-      alert('Friend added successfully!');
+      alert('Friend request sent!');
       setSearchResults([]);
       setSearchQuery('');
       loadData();
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to add friend');
+      alert(error.response?.data?.error || 'Failed to send friend request');
+    }
+  };
+
+  const handleAcceptFriendRequest = async (requestId) => {
+    try {
+      await handleFriendRequestAPI(requestId, 'accept');
+      alert('Friend request accepted!');
+      loadData();
+    } catch (error) {
+      alert(error.response?.data?.error || 'Failed to accept friend request');
+    }
+  };
+
+  const handleRejectFriendRequest = async (requestId) => {
+    try {
+      await handleFriendRequestAPI(requestId, 'reject');
+      alert('Friend request rejected');
+      loadData();
+    } catch (error) {
+      alert(error.response?.data?.error || 'Failed to reject friend request');
+    }
+  };
+
+  const handleRemoveFriend = async (friendId) => {
+    if (!window.confirm('Remove this friend?')) return;
+    try {
+      await removeFriend(friendId);
+      alert('Friend removed');
+      loadData();
+    } catch (error) {
+      alert(error.response?.data?.error || 'Failed to remove friend');
+    }
+  };
+
+  const handleOpenChat = async (friendId) => {
+    try {
+      // First switch to inbox tab
+      setActiveTab('inbox');
+      
+      // Small delay to ensure tab switch completes
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Load threads
+      const threadsData = await listThreads();
+      setThreads(threadsData);
+      
+      // Find the thread with this friend
+      const thread = threadsData.find(t => 
+        t.thread_type === 'user_user' && 
+        t.participants.some(p => p.id === friendId)
+      );
+      
+      if (thread) {
+        // Select the existing thread
+        setSelectedThreadId(thread.id);
+        const msgs = await getThreadMessages(thread.id);
+        setThreadMessages(msgs);
+        await markThreadRead(thread.id);
+      } else {
+        // Create new thread
+        const newThread = await createUserUserThread(friendId);
+        const threadsRefresh = await listThreads();
+        setThreads(threadsRefresh);
+        setSelectedThreadId(newThread.id);
+        const msgs = await getThreadMessages(newThread.id);
+        setThreadMessages(msgs);
+      }
+    } catch (error) {
+      console.error('Error opening chat:', error);
+      alert('Failed to open chat');
     }
   };
 
@@ -269,6 +418,20 @@ function MyProfile({ user, setUser }) {
       loadData();
     } catch (error) {
       alert('Failed to update chat request');
+    }
+  };
+
+  const handleDeleteThread = async (threadId) => {
+    if (!window.confirm('Delete this conversation? This will remove it for both participants.')) return;
+    try {
+      await deleteThread(threadId);
+      setThreads(threads.filter(t => t.id !== threadId));
+      if (selectedThreadId === threadId) {
+        setSelectedThreadId(null);
+        setThreadMessages([]);
+      }
+    } catch (error) {
+      alert('Failed to delete thread: ' + (error.response?.data?.error || error.message));
     }
   };
 
@@ -406,6 +569,34 @@ function MyProfile({ user, setUser }) {
           marginBottom: '2rem',
           flexWrap: 'wrap'
         }}>
+          {(
+            <>
+              <button
+                onClick={() => setActiveTab('inbox')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '1rem 1.5rem',
+                  fontSize: '1.05rem',
+                  fontWeight: '600',
+                  color: activeTab === 'inbox' ? '#7F7FD5' : '#999',
+                  borderBottom: activeTab === 'inbox' ? '3px solid #7F7FD5' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Inbox {notificationCounts.inbox > 0 && (
+                  <span style={{
+                    marginLeft: '0.4rem',
+                    display: 'inline-block',
+                    width: '10px',
+                    height: '10px',
+                    background: '#e74c3c',
+                    borderRadius: '50%'
+                  }}/>
+                )}
+              </button>
+            </>
+          )}
           {!user.is_doctor && (
             <>
               <button
@@ -459,6 +650,21 @@ function MyProfile({ user, setUser }) {
                 🏥 Clinic Profile
               </button>
               <button
+                onClick={() => setActiveTab('friends')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '1rem 1.5rem',
+                  fontSize: '1.05rem',
+                  fontWeight: '600',
+                  color: activeTab === 'friends' ? '#7F7FD5' : '#999',
+                  borderBottom: activeTab === 'friends' ? '3px solid #7F7FD5' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                👥 Friends
+              </button>
+              <button
                 onClick={() => setActiveTab('patients')}
                 style={{
                   background: 'none',
@@ -486,7 +692,16 @@ function MyProfile({ user, setUser }) {
                   cursor: 'pointer'
                 }}
               >
-                💬 Chat Requests
+                💬 Chat Requests {notificationCounts.chat_requests > 0 && (
+                  <span style={{
+                    marginLeft: '0.4rem',
+                    display: 'inline-block',
+                    width: '10px',
+                    height: '10px',
+                    background: '#e74c3c',
+                    borderRadius: '50%'
+                  }}/>
+                )}
               </button>
               <button
                 onClick={() => setActiveTab('my-articles')}
@@ -736,7 +951,7 @@ function MyProfile({ user, setUser }) {
                   <p style={{ color: '#666', marginBottom: '1rem' }}>{request.message}</p>
                   <div style={{ display: 'flex', gap: '1rem' }}>
                     <button
-                      onClick={() => handleChatRequestAction(request.id, 'accepted')}
+                      onClick={() => handleChatRequestAction(request.id, 'approved')}
                       style={{
                         background: '#4CAF50',
                         color: 'white',
@@ -750,7 +965,7 @@ function MyProfile({ user, setUser }) {
                       Accept
                     </button>
                     <button
-                      onClick={() => handleChatRequestAction(request.id, 'rejected')}
+                      onClick={() => handleChatRequestAction(request.id, 'declined')}
                       style={{
                         background: '#e74c3c',
                         color: 'white',
@@ -1033,8 +1248,144 @@ function MyProfile({ user, setUser }) {
           </div>
         )}
 
-        {/* Friends Tab (Regular Users) */}
-        {activeTab === 'friends' && !user.is_doctor && (
+        {/* Inbox Tab (Regular Users) */}
+        {activeTab === 'inbox' && (
+          <div>
+            <h2 style={{ marginBottom: '1.5rem' }}>Inbox</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1rem' }}>
+              <div style={{
+                background: '#f8f9fa',
+                padding: '1rem',
+                borderRadius: '12px',
+                maxHeight: '480px',
+                overflowY: 'auto'
+              }}>
+                {threads.length === 0 && (
+                  <p style={{ color: '#999' }}>No conversations yet.</p>
+                )}
+                {threads.map(thread => (
+                  <div
+                    key={thread.id}
+                    style={{
+                      padding: '0.8rem',
+                      background: selectedThreadId === thread.id ? 'white' : '#eef2f7',
+                      borderRadius: '10px',
+                      marginBottom: '0.6rem',
+                      border: '1px solid #e0e0e0',
+                      position: 'relative'
+                    }}
+                  >
+                    <div
+                      onClick={async () => {
+                        setSelectedThreadId(thread.id);
+                        const msgs = await getThreadMessages(thread.id);
+                        setThreadMessages(Array.isArray(msgs) ? msgs : []);
+                        try { await markThreadRead(thread.id); } catch {}
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div style={{ fontWeight: 600, color: '#333' }}>{thread.thread_type === 'user_user' ? 'Friend Chat' : 'Doctor Chat'}</div>
+                      <div style={{ fontSize: '0.85rem', color: '#666' }}>
+                        With: {(() => {
+                          const participants = (thread.participants || []);
+                          const others = participants.filter(p => p.id !== user.id);
+                          return others.length > 0 ? others.map(p => p.full_name || p.username).join(', ') : '';
+                        })()}
+                      </div>
+                      {thread.last_message && thread.last_message.content && (
+                        <div style={{ fontSize: '0.85rem', color: '#999', marginTop: '0.3rem' }}>
+                          "{thread.last_message.content.length > 80 ? thread.last_message.content.slice(0, 80) + '…' : thread.last_message.content}"
+                        </div>
+                      )}
+                      {thread.unread_count > 0 && (
+                        <div style={{ fontSize: '0.8rem', color: '#7F7FD5', marginTop: '0.3rem' }}>
+                          • {thread.unread_count} new
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteThread(thread.id);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: '0.5rem',
+                        right: '0.5rem',
+                        background: '#e74c3c',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '24px',
+                        height: '24px',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      title="Delete conversation"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div style={{
+                background: '#f8f9fa',
+                padding: '1rem',
+                borderRadius: '12px',
+                minHeight: '300px'
+              }}>
+                {!selectedThreadId ? (
+                  <p style={{ color: '#999' }}>Select a conversation to view messages.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1rem' }}>
+                      {(Array.isArray(threadMessages) ? threadMessages : []).map(m => (
+                        <div key={m.id} style={{
+                          background: m.sender.id === user.id ? '#dbe7ff' : 'white',
+                          padding: '0.8rem',
+                          borderRadius: '10px',
+                          marginBottom: '0.6rem',
+                          border: '1px solid #e0e0e0'
+                        }}>
+                          <div style={{ fontWeight: 600 }}>{m.sender.username}</div>
+                          <div style={{ color: '#333' }}>{m.content}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input
+                        type="text"
+                        value={messageText}
+                        onChange={e => setMessageText(e.target.value)}
+                        placeholder="Type a message..."
+                        style={{ flex: 1, padding: '0.8rem', border: '2px solid #e0e0e0', borderRadius: '10px' }}
+                      />
+                      <button
+                        onClick={async () => {
+                          if (!messageText.trim()) return;
+                          await postThreadMessage(selectedThreadId, { content: messageText });
+                          const msgs = await getThreadMessages(selectedThreadId);
+                          setThreadMessages(msgs);
+                          setMessageText('');
+                        }}
+                        className="submit-btn"
+                        style={{ width: 'auto' }}
+                      >
+                        Send
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Friends Tab */}
+        {activeTab === 'friends' && (
           <div>
             <h2 style={{ marginBottom: '1.5rem' }}>Friends</h2>
             
@@ -1096,6 +1447,91 @@ function MyProfile({ user, setUser }) {
               )}
             </div>
 
+            {/* Friend Requests Section */}
+            {friendRequests.length > 0 && (
+              <div style={{ 
+                background: '#fff3cd',
+                padding: '1.5rem',
+                borderRadius: '15px',
+                marginBottom: '2rem',
+                border: '2px solid #ffc107'
+              }}>
+                <h3 style={{ marginBottom: '1rem', color: '#856404' }}>Friend Requests ({friendRequests.length})</h3>
+                {friendRequests.map(req => (
+                  <div 
+                    key={req.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '1rem',
+                      padding: '1rem',
+                      background: 'white',
+                      borderRadius: '10px',
+                      marginBottom: '0.8rem'
+                    }}
+                  >
+                    <div style={{
+                      width: '50px',
+                      height: '50px',
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      border: '2px solid #ffc107',
+                      background: '#f0f0f0',
+                      flexShrink: 0
+                    }}>
+                      {req.from_user.profile_picture ? (
+                        <img 
+                          src={`${process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050'}${req.from_user.profile_picture}`}
+                          alt={req.from_user.username}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: '100%',
+                          height: '100%',
+                          background: 'linear-gradient(135deg, #ffc107, #ff9800)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontSize: '1.2rem',
+                          fontWeight: 'bold'
+                        }}>
+                          {req.from_user.username.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: '600', color: '#333' }}>{req.from_user.username}</div>
+                      <div style={{ fontSize: '0.9rem', color: '#666' }}>
+                        {req.from_user.full_name || 'No name'}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        onClick={() => handleAcceptFriendRequest(req.id)}
+                        className="submit-btn"
+                        style={{ width: 'auto', background: '#28a745' }}
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => handleRejectFriendRequest(req.id)}
+                        className="submit-btn"
+                        style={{ width: 'auto', background: '#dc3545' }}
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div>
               {friends.map(friend => (
                 <div 
@@ -1108,9 +1544,8 @@ function MyProfile({ user, setUser }) {
                     background: '#f8f9fa',
                     borderRadius: '15px',
                     marginBottom: '0.8rem',
-                    cursor: 'pointer'
+                    cursor: 'default'
                   }}
-                  onClick={() => navigate(`/users/${friend.id}`)}
                 >
                   <div style={{
                     width: '50px',
@@ -1147,11 +1582,34 @@ function MyProfile({ user, setUser }) {
                       </div>
                     )}
                   </div>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: '600', color: '#333' }}>{friend.username}</div>
                     <div style={{ fontSize: '0.9rem', color: '#666' }}>
                       {friend.full_name || 'No name'}
                     </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      onClick={() => navigate(`/users/${friend.id}`)}
+                      className="submit-btn"
+                      style={{ width: 'auto', background: '#ccc' }}
+                    >
+                      View
+                    </button>
+                    <button
+                      onClick={() => handleOpenChat(friend.id)}
+                      className="submit-btn"
+                      style={{ width: 'auto' }}
+                    >
+                      Message
+                    </button>
+                    <button
+                      onClick={() => handleRemoveFriend(friend.id)}
+                      className="submit-btn"
+                      style={{ width: 'auto', background: '#dc3545' }}
+                    >
+                      Remove
+                    </button>
                   </div>
                 </div>
               ))}

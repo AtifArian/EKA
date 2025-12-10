@@ -20,6 +20,7 @@ import Journals from './pages/Journals';
 import JournalDetail from './pages/JournalDetail';
 import MyProfile from './pages/MyProfile';
 import UserProfile from './pages/UserProfile';
+import Chat from './pages/Chat';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -71,6 +72,7 @@ function App() {
             <Route path="/journals" element={<Journals user={user} />} />
             <Route path="/journals/:id" element={<JournalDetail user={user} />} />
             <Route path="/users/:id" element={<UserProfile />} />
+            <Route path="/chat/:userId" element={<ProtectedRoute user={user}><Chat user={user} /></ProtectedRoute>} />
             <Route 
               path="/profile" 
               element={

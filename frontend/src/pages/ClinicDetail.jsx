@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getClinicDetail, bookSession, addClinicReview } from '../services/api';
+import { getClinicDetail, bookSession, addClinicReview, createDoctorChatRequest } from '../services/api';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -29,6 +29,7 @@ function ClinicDetail({ user }) {
     rating: 5,
     comment: ''
   });
+  const [sendingChatReq, setSendingChatReq] = useState(false);
 
   useEffect(() => {
     fetchClinicDetail();
@@ -104,6 +105,22 @@ function ClinicDetail({ user }) {
       fetchClinicDetail();
     } catch (error) {
       alert(error.response?.data?.error || 'Failed to add review');
+    }
+  };
+
+  const handleRequestChat = async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    try {
+      setSendingChatReq(true);
+      await createDoctorChatRequest(clinic.user.id, 'Hi, I would like to chat.');
+      alert('Chat request sent! The doctor will see it in Chat Requests.');
+    } catch (error) {
+      alert(error.response?.data?.error || 'Failed to send chat request');
+    } finally {
+      setSendingChatReq(false);
     }
   };
 
@@ -210,6 +227,22 @@ function ClinicDetail({ user }) {
           }}>
             "{clinic.quote || 'Dedicated to your mental wellness'}"
           </blockquote>
+
+          {user && !user.is_doctor && (
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.2rem' }}>
+              <button onClick={() => setShowBooking(true)} className="book-now-btn">
+                Book Now
+              </button>
+              <button
+                onClick={handleRequestChat}
+                disabled={sendingChatReq}
+                className="submit-btn"
+                style={{ width: 'auto' }}
+              >
+                {sendingChatReq ? 'Sending...' : 'Request Chat'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -294,9 +327,13 @@ function ClinicDetail({ user }) {
         ))}
       </div>
 
-      <button onClick={() => setShowBooking(true)} className="book-now-btn">
-        Book Now
-      </button>
+      {!user && (
+        <div style={{ marginTop: '1rem' }}>
+          <button onClick={() => setShowBooking(true)} className="book-now-btn">
+            Book Now
+          </button>
+        </div>
+      )}
 
       {showBooking && (
         <div style={{
