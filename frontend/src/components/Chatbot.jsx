@@ -56,7 +56,7 @@ function Chatbot() {
       }
 
       // Call backend API for Gemini response
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5050/api';
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5500/api';
       const response = await fetch(`${apiUrl}/chatbot`, {
         method: 'POST',
         headers: {
