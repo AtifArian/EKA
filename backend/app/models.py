@@ -426,3 +426,33 @@ class Notification(db.Model):
             'is_read': self.is_read,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
+class Donation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    donor_name = db.Column(db.String(100), nullable=True)  # Optional for anonymous donations
+    donor_email = db.Column(db.String(120), nullable=True)  # Optional
+    amount = db.Column(db.Float, nullable=False)
+    currency = db.Column(db.String(10), default='BDT')
+    payment_method = db.Column(db.String(50), nullable=False)  # 'bkash', 'nagad', 'rocket', etc.
+    transaction_id = db.Column(db.String(100), nullable=True)
+    phone_number = db.Column(db.String(20), nullable=True)
+    message = db.Column(db.Text, nullable=True)
+    is_anonymous = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String(20), default='pending')  # pending, completed, failed
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'donor_name': 'Anonymous' if self.is_anonymous else self.donor_name,
+            'donor_email': None if self.is_anonymous else self.donor_email,
+            'amount': self.amount,
+            'currency': self.currency,
+            'payment_method': self.payment_method,
+            'transaction_id': self.transaction_id,
+            'phone_number': self.phone_number,
+            'message': self.message,
+            'is_anonymous': self.is_anonymous,
+            'status': self.status,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }

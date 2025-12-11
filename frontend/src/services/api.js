@@ -108,4 +108,13 @@ export const deleteJournal = (journalId) => api.delete(`/journals/${journalId}`)
 export const heartJournal = (journalId) => api.post(`/journals/${journalId}/heart`).then(res => res.data);
 export const addJournalComment = (journalId, data) => api.post(`/journals/${journalId}/comments`, data).then(res => res.data);
 
+// Donation APIs - no authentication required
+export const createDonation = (data) => {
+  return axios.post(`${API_URL}/donations`, data, {
+    headers: { 'Content-Type': 'application/json' }
+  }).then(res => res.data);
+};
+export const getDonations = (params) => axios.get(`${API_URL}/donations`, { params }).then(res => res.data);
+export const getDonationStats = () => axios.get(`${API_URL}/donations/stats`).then(res => res.data);
+
 export default api;
