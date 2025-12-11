@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Chatbot from '../components/Chatbot';
+import { createDonation } from '../services/api';
 
 function Home({ user }) {
   const navigate = useNavigate();
   const [showDonationModal, setShowDonationModal] = useState(false);
   const [donationAmount, setDonationAmount] = useState('');
   const [donorName, setDonorName] = useState('');
+  const [donorEmail, setDonorEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [message, setMessage] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('bkash');
+  const [transactionId, setTransactionId] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [donationSuccess, setDonationSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
 
   // Slideshow images - update these paths once you copy the images
@@ -35,26 +42,59 @@ function Home({ user }) {
     return () => clearInterval(interval);
   }, [slides.length]);
 
-  const handleDonation = () => {
+  const handleDonation = async () => {
     if (!donationAmount || parseFloat(donationAmount) <= 0) {
       alert('Please enter a valid donation amount');
       return;
     }
 
-    console.log('Donation:', {
-      amount: donationAmount,
-      name: isAnonymous ? 'Anonymous' : donorName || 'Anonymous',
-      timestamp: new Date().toISOString()
-    });
+    if (!paymentMethod) {
+      alert('Please select a payment method');
+      return;
+    }
 
-    setDonationSuccess(true);
-    setTimeout(() => {
-      setShowDonationModal(false);
-      setDonationSuccess(false);
-      setDonationAmount('');
-      setDonorName('');
-      setIsAnonymous(false);
-    }, 2000);
+    setIsSubmitting(true);
+
+    try {
+      const donationData = {
+        amount: parseFloat(donationAmount),
+        payment_method: paymentMethod,
+        currency: 'BDT',
+        is_anonymous: isAnonymous
+      };
+
+      // Add optional fields if not anonymous
+      if (!isAnonymous) {
+        if (donorName) donationData.donor_name = donorName;
+        if (donorEmail) donationData.donor_email = donorEmail;
+      }
+
+      if (phoneNumber) donationData.phone_number = phoneNumber;
+      if (transactionId) donationData.transaction_id = transactionId;
+      if (message) donationData.message = message;
+
+      const response = await createDonation(donationData);
+      console.log('Donation created:', response);
+
+      setDonationSuccess(true);
+      setTimeout(() => {
+        setShowDonationModal(false);
+        setDonationSuccess(false);
+        setDonationAmount('');
+        setDonorName('');
+        setDonorEmail('');
+        setPhoneNumber('');
+        setTransactionId('');
+        setMessage('');
+        setPaymentMethod('bkash');
+        setIsAnonymous(false);
+      }, 3000);
+    } catch (error) {
+      console.error('Donation error:', error);
+      alert(error.response?.data?.error || 'Failed to process donation. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -251,15 +291,80 @@ function Home({ user }) {
                   
                   <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', color: '#333', fontWeight: '500' }}>
-                      Donation Amount ($) *
+                      Donation Amount (BDT) *
                     </label>
                     <input
                       type="number"
                       min="1"
-                      step="0.01"
+                      step="1"
                       value={donationAmount}
                       onChange={(e) => setDonationAmount(e.target.value)}
                       placeholder="Enter amount"
+                      style={{
+                        width: '100%',
+                        padding: '0.8rem',
+                        border: '2px solid #e0e0e0',
+                        borderRadius: '10px',
+                        fontSize: '1rem',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#333', fontWeight: '500' }}>
+                      Payment Method *
+                    </label>
+                    <select
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '0.8rem',
+                        border: '2px solid #e0e0e0',
+                        borderRadius: '10px',
+                        fontSize: '1rem',
+                        boxSizing: 'border-box',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="bkash">bKash</option>
+                      <option value="nagad">Nagad</option>
+                      <option value="rocket">Rocket</option>
+                      <option value="bank">Bank Transfer</option>
+                      <option value="card">Credit/Debit Card</option>
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#333', fontWeight: '500' }}>
+                      Phone Number (Optional)
+                    </label>
+                    <input
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="01XXXXXXXXX"
+                      style={{
+                        width: '100%',
+                        padding: '0.8rem',
+                        border: '2px solid #e0e0e0',
+                        borderRadius: '10px',
+                        fontSize: '1rem',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#333', fontWeight: '500' }}>
+                      Transaction ID (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={transactionId}
+                      onChange={(e) => setTransactionId(e.target.value)}
+                      placeholder="Transaction ID from payment"
                       style={{
                         width: '100%',
                         padding: '0.8rem',
@@ -278,7 +383,10 @@ function Home({ user }) {
                         checked={isAnonymous}
                         onChange={(e) => {
                           setIsAnonymous(e.target.checked);
-                          if (e.target.checked) setDonorName('');
+                          if (e.target.checked) {
+                            setDonorName('');
+                            setDonorEmail('');
+                          }
                         }}
                         style={{ marginRight: '0.5rem', cursor: 'pointer' }}
                       />
@@ -286,43 +394,86 @@ function Home({ user }) {
                     </label>
 
                     {!isAnonymous && (
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', color: '#333', fontWeight: '500' }}>
-                          Your Name (Optional)
-                        </label>
-                        <input
-                          type="text"
-                          value={donorName}
-                          onChange={(e) => setDonorName(e.target.value)}
-                          placeholder="Enter your name"
-                          style={{
-                            width: '100%',
-                            padding: '0.8rem',
-                            border: '2px solid #e0e0e0',
-                            borderRadius: '10px',
-                            fontSize: '1rem',
-                            boxSizing: 'border-box'
-                          }}
-                        />
-                      </div>
+                      <>
+                        <div style={{ marginBottom: '1rem' }}>
+                          <label style={{ display: 'block', marginBottom: '0.5rem', color: '#333', fontWeight: '500' }}>
+                            Your Name (Optional)
+                          </label>
+                          <input
+                            type="text"
+                            value={donorName}
+                            onChange={(e) => setDonorName(e.target.value)}
+                            placeholder="Enter your name"
+                            style={{
+                              width: '100%',
+                              padding: '0.8rem',
+                              border: '2px solid #e0e0e0',
+                              borderRadius: '10px',
+                              fontSize: '1rem',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                        <div style={{ marginBottom: '1rem' }}>
+                          <label style={{ display: 'block', marginBottom: '0.5rem', color: '#333', fontWeight: '500' }}>
+                            Your Email (Optional)
+                          </label>
+                          <input
+                            type="email"
+                            value={donorEmail}
+                            onChange={(e) => setDonorEmail(e.target.value)}
+                            placeholder="Enter your email"
+                            style={{
+                              width: '100%',
+                              padding: '0.8rem',
+                              border: '2px solid #e0e0e0',
+                              borderRadius: '10px',
+                              fontSize: '1rem',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </>
                     )}
+                  </div>
+
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#333', fontWeight: '500' }}>
+                      Message (Optional)
+                    </label>
+                    <textarea
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      placeholder="Leave a message..."
+                      rows="3"
+                      style={{
+                        width: '100%',
+                        padding: '0.8rem',
+                        border: '2px solid #e0e0e0',
+                        borderRadius: '10px',
+                        fontSize: '1rem',
+                        boxSizing: 'border-box',
+                        resize: 'vertical'
+                      }}
+                    />
                   </div>
 
                   <button
                     onClick={handleDonation}
+                    disabled={isSubmitting}
                     style={{
                       width: '100%',
                       padding: '1rem',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      background: isSubmitting ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                       color: 'white',
                       border: 'none',
                       borderRadius: '10px',
                       fontSize: '1.1rem',
                       fontWeight: '600',
-                      cursor: 'pointer'
+                      cursor: isSubmitting ? 'not-allowed' : 'pointer'
                     }}
                   >
-                    Complete Donation
+                    {isSubmitting ? 'Processing...' : 'Complete Donation'}
                   </button>
                 </>
               ) : (
@@ -330,10 +481,13 @@ function Home({ user }) {
                   <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>✓</div>
                   <h2 style={{ color: '#4CAF50', marginBottom: '1rem' }}>Thank You!</h2>
                   <p style={{ color: '#666', fontSize: '1.1rem' }}>
-                    Your donation of ${parseFloat(donationAmount).toFixed(2)} has been received.
+                    Your donation of ৳{parseFloat(donationAmount).toFixed(2)} has been received.
                   </p>
                   <p style={{ color: '#999', fontSize: '0.9rem', marginTop: '0.5rem' }}>
                     {isAnonymous ? 'Anonymous Donor' : donorName || 'Anonymous Donor'}
+                  </p>
+                  <p style={{ color: '#999', fontSize: '0.85rem', marginTop: '1rem' }}>
+                    Payment Method: {paymentMethod.toUpperCase()}
                   </p>
                 </div>
               )}
