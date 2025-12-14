@@ -125,10 +125,13 @@ function ArticleDetail({ user }) {
   return (
     <div className="container">
       <div style={{
-        background: 'white',
+        background: 'rgba(255, 255, 255, 0.25)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
         borderRadius: '20px',
         padding: '3rem',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
       }}>
         {/* Header with author info and edit/delete buttons */}
         <div style={{ 
@@ -156,9 +159,9 @@ function ArticleDetail({ user }) {
                 }}
               />
             ) : (
-              <h1 style={{ margin: 0, marginBottom: '0.5rem' }}>{article.title}</h1>
+              <h1 style={{ margin: 0, marginBottom: '0.5rem', color: '#1f2937' }}>{article.title}</h1>
             )}
-            <p style={{ margin: 0, color: '#666' }}>
+            <p style={{ margin: 0, color: '#1f2937' }}>
               By{' '}
               <span 
                 onClick={() => navigate(`/users/${article.author?.id}`)}
@@ -170,7 +173,7 @@ function ArticleDetail({ user }) {
               {new Date(article.created_at).toLocaleDateString()}
             </p>
             {!isEditing && article.keywords && (
-              <p style={{ margin: '0.5rem 0 0 0', color: '#999', fontSize: '0.9rem' }}>
+              <p style={{ margin: '0.5rem 0 0 0', color: '#4b5563', fontSize: '0.9rem' }}>
                 Keywords: {article.keywords}
               </p>
             )}
@@ -367,7 +370,8 @@ function ArticleDetail({ user }) {
             <div style={{ 
               whiteSpace: 'pre-wrap', 
               lineHeight: '1.8',
-              fontSize: '1.1rem'
+              fontSize: '1.1rem',
+              color: '#1f2937'
             }}>
               {article.content}
             </div>
@@ -403,7 +407,7 @@ function ArticleDetail({ user }) {
               👍 {article.like_count} {article.like_count === 1 ? 'Like' : 'Likes'}
             </button>
             <div style={{
-              color: '#666',
+              color: '#1f2937',
               display: 'flex',
               alignItems: 'center',
               padding: '0.8rem 1.5rem'
@@ -416,7 +420,7 @@ function ArticleDetail({ user }) {
         {/* Comments section (only show when not editing) */}
         {!isEditing && (
           <div className="comments-section" style={{ marginTop: '3rem' }}>
-            <h2 style={{ marginBottom: '1.5rem' }}>Comments</h2>
+            <h2 style={{ marginBottom: '1.5rem', color: '#1f2937' }}>Comments</h2>
             
             {user && (
               <form onSubmit={handleComment} style={{ marginBottom: '2rem' }}>
@@ -429,10 +433,14 @@ function ArticleDetail({ user }) {
                     width: '100%', 
                     padding: '1rem', 
                     borderRadius: '15px',
-                    border: '2px solid #e0e0e0',
+                    background: 'rgba(255, 255, 255, 0.35)',
+                    backdropFilter: 'blur(4px)',
+                    WebkitBackdropFilter: 'blur(4px)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
                     fontSize: '1rem',
                     fontFamily: 'inherit',
-                    resize: 'vertical'
+                    resize: 'vertical',
+                    color: '#1f2937'
                   }}
                 />
                 <button 
@@ -458,12 +466,15 @@ function ArticleDetail({ user }) {
             {!user && (
               <div style={{
                 padding: '1.5rem',
-                background: '#f8f9fa',
+                background: 'rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(6px)',
+                WebkitBackdropFilter: 'blur(6px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
                 borderRadius: '15px',
                 textAlign: 'center',
                 marginBottom: '2rem'
               }}>
-                <p style={{ margin: 0 }}>
+                <p style={{ margin: 0, color: '#1f2937' }}>
                   <span 
                     onClick={() => navigate('/login')}
                     style={{ 
@@ -488,7 +499,10 @@ function ArticleDetail({ user }) {
                   style={{ 
                     marginTop: '1rem', 
                     padding: '1.5rem', 
-                    background: '#f8f9fa', 
+                    background: 'rgba(255, 255, 255, 0.25)',
+                    backdropFilter: 'blur(6px)',
+                    WebkitBackdropFilter: 'blur(6px)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
                     borderRadius: '15px'
                   }}
                 >
@@ -550,14 +564,14 @@ function ArticleDetail({ user }) {
                       {new Date(c.created_at).toLocaleDateString()}
                     </span>
                   </div>
-                  <p style={{ margin: 0, marginLeft: '48px', lineHeight: '1.6' }}>{c.content}</p>
+                  <p style={{ margin: 0, marginLeft: '48px', lineHeight: '1.6', color: '#1f2937' }}>{c.content}</p>
                 </div>
               ))
             ) : (
               <div style={{ 
                 textAlign: 'center', 
                 padding: '2rem', 
-                color: '#999' 
+                color: '#6b7280' 
               }}>
                 No comments yet. Be the first to share your thoughts!
               </div>
