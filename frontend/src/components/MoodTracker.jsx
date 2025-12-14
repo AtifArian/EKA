@@ -118,16 +118,21 @@ function MoodTracker() {
   if (hasEntry && !showTracker) {
     return (
       <div style={{
-        position: 'fixed', bottom: '20px', left: '20px', background: 'white',
-        padding: '1rem 1.5rem', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-        display: 'flex', alignItems: 'center', gap: '1rem', zIndex: 999
+        position: 'fixed', bottom: '15px', left: '15px', 
+        background: 'rgba(255, 255, 255, 0.25)',
+        backdropFilter: 'blur(6px)',
+        WebkitbackdropFilter: 'blur(6px)',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
+        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+        padding: '0.6rem 1rem', borderRadius: '12px',
+        display: 'flex', alignItems: 'center', gap: '0rem', zIndex: 999
       }}>
-        <span>Today's mood: {MOODS.find(m => m.level === selectedMood)?.emoji}</span>
+        <span style={{ color: '#1f2937', fontSize: '0.85rem' }}>Today's mood: {MOODS.find(m => m.level === selectedMood)?.emoji}</span>
         <button onClick={handleEditMood} style={{
-          background: 'linear-gradient(135deg, #7F7FD5, #86A8E7)', color: 'white',
-          border: 'none', padding: '0.5rem 1rem', borderRadius: '10px',
-          cursor: 'pointer', fontSize: '0.9rem'
-        }}>Edit</button>
+          background: 'transparent',
+          border: 'none', padding: '0.4rem 0.8rem', borderRadius: '8px',
+          cursor: 'pointer', fontSize: '1rem'
+        }}>🔄</button>
       </div>
     );
   }

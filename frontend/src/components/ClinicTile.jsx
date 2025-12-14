@@ -16,6 +16,7 @@ function ClinicTile({ clinic }) {
         src={profilePictureUrl} 
         alt={clinic.user.full_name}
         className="tile-image"
+        loading="lazy"
       />
       <div className="tile-content">
         <h3>{clinic.user.full_name || clinic.user.username}</h3>

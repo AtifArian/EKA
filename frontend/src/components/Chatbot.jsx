@@ -30,7 +30,7 @@ function Chatbot() {
   const checkForCrisisKeywords = (text) => {
     const crisisKeywords = [
       'suicide', 'kill myself', 'end my life', 'want to die', 'self harm',
-      'self-harm', 'no point living', 'better off dead',, 
+      'self-harm', 'no point living', 'better off dead',
       'can\'t go on', 'cant live anymore', 'don\'t want to live', 'wanna die','kill','knife','poison','hang myself'
     ];
     return crisisKeywords.some(keyword => text.toLowerCase().includes(keyword));

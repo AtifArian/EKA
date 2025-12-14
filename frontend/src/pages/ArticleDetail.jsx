@@ -13,6 +13,7 @@ function ArticleDetail({ user }) {
   const [editContent, setEditContent] = useState('');
   const [editMoodCategory, setEditMoodCategory] = useState('');
   const [editKeywords, setEditKeywords] = useState('');
+  const [newCoverImage, setNewCoverImage] = useState(null);
 
   const fetchArticle = async () => {
     try {
@@ -73,6 +74,7 @@ function ArticleDetail({ user }) {
     setEditContent(article.content);
     setEditMoodCategory(article.mood_category || '');
     setEditKeywords(article.keywords || '');
+    setNewCoverImage(null);
   };
 
   const handleSaveEdit = async (e) => {
@@ -83,18 +85,23 @@ function ArticleDetail({ user }) {
     }
 
     try {
-      await updateArticle(id, {
-        title: editTitle,
-        content: editContent,
-        mood_category: editMoodCategory,
-        keywords: editKeywords
-      });
+      const formData = new FormData();
+      formData.append('title', editTitle);
+      formData.append('content', editContent);
+      formData.append('mood_category', editMoodCategory);
+      formData.append('keywords', editKeywords);
+      if (newCoverImage) {
+        formData.append('cover_image', newCoverImage);
+      }
+      
+      await updateArticle(id, formData);
       setIsEditing(false);
+      setNewCoverImage(null);
       fetchArticle();
       alert('Article updated successfully!');
     } catch (error) {
       console.error('Error:', error);
-      alert('Failed to update article');
+      alert(error.response?.data?.error || 'Failed to update article');
     }
   };
 
@@ -286,6 +293,34 @@ function ArticleDetail({ user }) {
 
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                Update Cover Image (optional)
+              </label>
+              <input
+                type="file"
+                accept="image/png, image/jpeg, image/jpg, image/gif, image/webp"
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    setNewCoverImage(file);
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '0.8rem',
+                  borderRadius: '10px',
+                  border: '2px solid #e0e0e0',
+                  fontSize: '1rem'
+                }}
+              />
+              {newCoverImage && (
+                <small style={{ color: '#4CAF50', display: 'block', marginTop: '0.5rem' }}>
+                  ✓ New image selected: {newCoverImage.name}
+                </small>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
                 Content
               </label>
               <textarea
@@ -305,14 +340,38 @@ function ArticleDetail({ user }) {
             </div>
           </div>
         ) : (
-          <div style={{ 
-            whiteSpace: 'pre-wrap', 
-            marginTop: '2rem',
-            lineHeight: '1.8',
-            fontSize: '1.1rem'
-          }}>
-            {article.content}
-          </div>
+          <>
+            {/* Cover Image */}
+            {article.cover_image && (
+              <div style={{ 
+                marginTop: '2rem',
+                marginBottom: '2rem',
+                borderRadius: '15px',
+                overflow: 'hidden',
+                maxHeight: '500px'
+              }}>
+                <img 
+                  src={`${process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050'}${article.cover_image}`}
+                  alt={article.title}
+                  style={{
+                    width: '100%',
+                    height: 'auto',
+                    display: 'block',
+                    objectFit: 'cover'
+                  }}
+                />
+              </div>
+            )}
+            
+            {/* Content */}
+            <div style={{ 
+              whiteSpace: 'pre-wrap', 
+              lineHeight: '1.8',
+              fontSize: '1.1rem'
+            }}>
+              {article.content}
+            </div>
+          </>
         )}
         
         {/* Action buttons (only show when not editing) */}
