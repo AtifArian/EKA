@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getClinicDetail, bookSession, addClinicReview, createDoctorChatRequest } from '../services/api';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
@@ -31,18 +31,18 @@ function ClinicDetail({ user }) {
   });
   const [sendingChatReq, setSendingChatReq] = useState(false);
 
-  useEffect(() => {
-    fetchClinicDetail();
-  }, [id]);
-
-  const fetchClinicDetail = async () => {
+  const fetchClinicDetail = useCallback(async () => {
     try {
       const data = await getClinicDetail(id);
       setClinic(data);
     } catch (error) {
       console.error('Error fetching clinic:', error);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchClinicDetail();
+  }, [fetchClinicDetail]);
 
   const handleBooking = async (e) => {
     e.preventDefault();
@@ -52,12 +52,8 @@ function ClinicDetail({ user }) {
     }
 
     try {
-      const response = await bookSession(id, bookingData);
-      if (response.was_free) {
-        alert('Session booked successfully! This was your FREE booking.');
-      } else {
-        alert('Session booked successfully!');
-      }
+      await bookSession(id, bookingData);
+      alert('Session booked successfully!');
       setShowBooking(false);
       setBookingData({ appointment_date: '', notes: '' });
     } catch (error) {

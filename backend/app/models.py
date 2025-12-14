@@ -428,18 +428,20 @@ class Notification(db.Model):
         }
 
 class Donation(db.Model):
+    __tablename__ = 'donation'
+    
     id = db.Column(db.Integer, primary_key=True)
     donor_name = db.Column(db.String(100), nullable=True)  # Optional for anonymous donations
-    donor_email = db.Column(db.String(120), nullable=True)  # Optional
-    amount = db.Column(db.Float, nullable=False)
+    donor_email = db.Column(db.String(120), nullable=True, index=True)  # Indexed for lookup
+    amount = db.Column(db.Float, nullable=False, index=True)  # Indexed for stats
     currency = db.Column(db.String(10), default='BDT')
-    payment_method = db.Column(db.String(50), nullable=False)  # 'bkash', 'nagad', 'rocket', etc.
-    transaction_id = db.Column(db.String(100), nullable=True)
+    payment_method = db.Column(db.String(50), nullable=False, index=True)  # Indexed for filtering
+    transaction_id = db.Column(db.String(100), nullable=True, unique=True)  # Unique transaction IDs
     phone_number = db.Column(db.String(20), nullable=True)
     message = db.Column(db.Text, nullable=True)
-    is_anonymous = db.Column(db.Boolean, default=False)
-    status = db.Column(db.String(20), default='pending')  # pending, completed, failed
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_anonymous = db.Column(db.Boolean, default=False, index=True)
+    status = db.Column(db.String(20), default='pending', index=True)  # Indexed for filtering
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)  # Indexed for sorting
     
     def to_dict(self):
         return {
