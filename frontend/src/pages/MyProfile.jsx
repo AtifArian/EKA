@@ -52,6 +52,7 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showJournalForm, setShowJournalForm] = useState(false);
+  const [editingJournalId, setEditingJournalId] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [sessions, setSessions] = useState([]);
   
@@ -336,13 +337,21 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
   const handleCreateJournal = async (e) => {
     e.preventDefault();
     try {
-      await createJournal(journalForm);
-      alert('Journal created successfully!');
+      if (editingJournalId) {
+        // Update existing journal
+        await updateJournal(editingJournalId, journalForm);
+        alert('Journal updated successfully!');
+        setEditingJournalId(null);
+      } else {
+        // Create new journal
+        await createJournal(journalForm);
+        alert('Journal created successfully!');
+      }
       setShowJournalForm(false);
       setJournalForm({ title: '', content: '', is_public: false });
       loadData();
     } catch (error) {
-      alert('Failed to create journal');
+      alert(editingJournalId ? 'Failed to update journal' : 'Failed to create journal');
     }
   };
 
@@ -388,6 +397,22 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
     } catch (error) {
       alert('Failed to delete journal');
     }
+  };
+
+  const handleEditJournal = (journal) => {
+    setEditingJournalId(journal.id);
+    setJournalForm({
+      title: journal.title,
+      content: journal.content,
+      is_public: journal.is_public
+    });
+    setShowJournalForm(true);
+  };
+
+  const handleCancelJournalEdit = () => {
+    setEditingJournalId(null);
+    setJournalForm({ title: '', content: '', is_public: false });
+    setShowJournalForm(false);
   };
 
   const handleDeleteArticle = async (articleId) => {
@@ -1563,6 +1588,20 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
                       {journal.is_public ? '🌐 Public' : '🔒 Private'}
                     </button>
                     <button
+                      onClick={() => handleEditJournal(journal)}
+                      style={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        color: 'white',
+                        border: 'none',
+                        padding: '0.4rem 0.8rem',
+                        borderRadius: '8px',
+                        fontSize: '0.85rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
                       onClick={() => handleDeleteJournal(journal.id)}
                       style={{
                         background: '#e74c3c',
@@ -2216,7 +2255,7 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
           zIndex: 9999
         }}>
           <div className="form-container" style={{ maxWidth: '600px' }}>
-            <h2>New Journal Entry</h2>
+            <h2>{editingJournalId ? 'Edit Journal Entry' : 'New Journal Entry'}</h2>
             <form onSubmit={handleCreateJournal}>
               <div className="form-group">
                 <label>Title</label>
@@ -2247,11 +2286,11 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
                 </label>
               </div>
               <button type="submit" className="submit-btn">
-                Create Journal
+                {editingJournalId ? 'Update Journal' : 'Create Journal'}
               </button>
               <button 
                 type="button" 
-                onClick={() => setShowJournalForm(false)}
+                onClick={editingJournalId ? handleCancelJournalEdit : () => setShowJournalForm(false)}
                 style={{ marginTop: '1rem', background: '#ccc' }}
                 className="submit-btn"
               >

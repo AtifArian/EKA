@@ -276,12 +276,15 @@ def get_high_risk_patients():
     for patient in doctor.patients:
         risk_score = predict_suicide_risk(patient.id)
         if risk_score >= 85:
+            # Ensure profile picture is a web-accessible URL (e.g., /uploads/profiles/xxx.jpg)
+            # Use the same transformation as User.to_dict()
+            patient_dict = patient.to_dict()
             high_risk_patients.append({
                 'id': patient.id,
                 'username': patient.username,
                 'full_name': patient.full_name,
                 'email': patient.email,
-                'profile_picture': patient.profile_picture,
+                'profile_picture': patient_dict.get('profile_picture'),
                 'risk_score': round(risk_score, 1)
             })
     
