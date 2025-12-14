@@ -58,7 +58,8 @@ function MyProfile({ user, setUser }) {
     title: '',
     content: '',
     mood_category: 'neutral',
-    keywords: ''
+    keywords: '',
+    cover_image: null
   });
 
   const [clinicForm, setClinicForm] = useState({
@@ -323,13 +324,26 @@ function MyProfile({ user, setUser }) {
 
   const handleCreateArticle = async (e) => {
     e.preventDefault();
+    
+    if (!articleForm.cover_image) {
+      alert('Cover image is required');
+      return;
+    }
+    
     try {
-      await createArticle(articleForm);
+      const formData = new FormData();
+      formData.append('title', articleForm.title);
+      formData.append('content', articleForm.content);
+      formData.append('mood_category', articleForm.mood_category);
+      formData.append('keywords', articleForm.keywords);
+      formData.append('cover_image', articleForm.cover_image);
+      
+      await createArticle(formData);
       alert('Article published successfully!');
-      setArticleForm({ title: '', content: '', mood_category: 'neutral', keywords: '' });
-      navigate('/articles');
+      setArticleForm({ title: '', content: '', mood_category: 'neutral', keywords: '', cover_image: null });
+      loadData();
     } catch (error) {
-      alert('Failed to publish article');
+      alert(error.response?.data?.error || 'Failed to publish article');
     }
   };
 
@@ -440,10 +454,13 @@ function MyProfile({ user, setUser }) {
   return (
     <div className="container">
       <div style={{
-        background: 'white',
+        background: 'rgba(255, 255, 255, 0.25)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
         borderRadius: '25px',
         padding: '3rem',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
       }}>
         {/* Profile Header with Picture */}
         <div style={{ 
@@ -521,10 +538,10 @@ function MyProfile({ user, setUser }) {
           </div>
           
           <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#7F7FD5', marginBottom: '0.5rem' }}>
+            <h1 style={{ color: '#1f2937', marginBottom: '0.5rem' }}>
               {user.full_name || user.username}
             </h1>
-            <p style={{ color: '#666', fontSize: '1.1rem', marginBottom: '1rem' }}>
+            <p style={{ color: '#1f2937', fontSize: '1.1rem', marginBottom: '1rem' }}>
               {user.is_doctor ? '👨‍⚕️ Doctor' : '👤 User'} • {user.email}
             </p>
             
@@ -579,7 +596,7 @@ function MyProfile({ user, setUser }) {
                   padding: '1rem 1.5rem',
                   fontSize: '1.05rem',
                   fontWeight: '600',
-                  color: activeTab === 'inbox' ? '#7F7FD5' : '#999',
+                  color: activeTab === 'inbox' ? '#7F7FD5' : '#000',
                   borderBottom: activeTab === 'inbox' ? '3px solid #7F7FD5' : 'none',
                   cursor: 'pointer'
                 }}
@@ -607,7 +624,7 @@ function MyProfile({ user, setUser }) {
                   padding: '1rem 1.5rem',
                   fontSize: '1.05rem',
                   fontWeight: '600',
-                  color: activeTab === 'journals' ? '#7F7FD5' : '#999',
+                  color: activeTab === 'journals' ? '#7F7FD5' : '#000',
                   borderBottom: activeTab === 'journals' ? '3px solid #7F7FD5' : 'none',
                   cursor: 'pointer'
                 }}
@@ -622,7 +639,7 @@ function MyProfile({ user, setUser }) {
                   padding: '1rem 1.5rem',
                   fontSize: '1.05rem',
                   fontWeight: '600',
-                  color: activeTab === 'friends' ? '#7F7FD5' : '#999',
+                  color: activeTab === 'friends' ? '#7F7FD5' : '#000',
                   borderBottom: activeTab === 'friends' ? '3px solid #7F7FD5' : 'none',
                   cursor: 'pointer'
                 }}
@@ -642,7 +659,7 @@ function MyProfile({ user, setUser }) {
                   padding: '1rem 1.5rem',
                   fontSize: '1.05rem',
                   fontWeight: '600',
-                  color: activeTab === 'clinic-profile' ? '#7F7FD5' : '#999',
+                  color: activeTab === 'clinic-profile' ? '#7F7FD5' : '#000',
                   borderBottom: activeTab === 'clinic-profile' ? '3px solid #7F7FD5' : 'none',
                   cursor: 'pointer'
                 }}
@@ -657,7 +674,7 @@ function MyProfile({ user, setUser }) {
                   padding: '1rem 1.5rem',
                   fontSize: '1.05rem',
                   fontWeight: '600',
-                  color: activeTab === 'friends' ? '#7F7FD5' : '#999',
+                  color: activeTab === 'friends' ? '#7F7FD5' : '#000',
                   borderBottom: activeTab === 'friends' ? '3px solid #7F7FD5' : 'none',
                   cursor: 'pointer'
                 }}
@@ -672,7 +689,7 @@ function MyProfile({ user, setUser }) {
                   padding: '1rem 1.5rem',
                   fontSize: '1.05rem',
                   fontWeight: '600',
-                  color: activeTab === 'patients' ? '#7F7FD5' : '#999',
+                  color: activeTab === 'patients' ? '#7F7FD5' : '#000',
                   borderBottom: activeTab === 'patients' ? '3px solid #7F7FD5' : 'none',
                   cursor: 'pointer'
                 }}
@@ -687,7 +704,7 @@ function MyProfile({ user, setUser }) {
                   padding: '1rem 1.5rem',
                   fontSize: '1.05rem',
                   fontWeight: '600',
-                  color: activeTab === 'chat-requests' ? '#7F7FD5' : '#999',
+                  color: activeTab === 'chat-requests' ? '#7F7FD5' : '#000',
                   borderBottom: activeTab === 'chat-requests' ? '3px solid #7F7FD5' : 'none',
                   cursor: 'pointer'
                 }}
@@ -711,7 +728,7 @@ function MyProfile({ user, setUser }) {
                   padding: '1rem 1.5rem',
                   fontSize: '1.05rem',
                   fontWeight: '600',
-                  color: activeTab === 'my-articles' ? '#7F7FD5' : '#999',
+                  color: activeTab === 'my-articles' ? '#7F7FD5' : '#000',
                   borderBottom: activeTab === 'my-articles' ? '3px solid #7F7FD5' : 'none',
                   cursor: 'pointer'
                 }}
@@ -726,7 +743,7 @@ function MyProfile({ user, setUser }) {
                   padding: '1rem 1.5rem',
                   fontSize: '1.05rem',
                   fontWeight: '600',
-                  color: activeTab === 'publish-article' ? '#7F7FD5' : '#999',
+                  color: activeTab === 'publish-article' ? '#7F7FD5' : '#000',
                   borderBottom: activeTab === 'publish-article' ? '3px solid #7F7FD5' : 'none',
                   cursor: 'pointer'
                 }}
@@ -864,11 +881,15 @@ function MyProfile({ user, setUser }) {
               <div style={{ 
                 marginTop: '2rem', 
                 padding: '1.5rem', 
-                background: '#e8f5e9', 
-                borderRadius: '15px' 
+                background: 'rgba(46, 125, 50, 0.15)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(46, 125, 50, 0.3)',
+                borderRadius: '15px',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
               }}>
-                <h3 style={{ color: '#2e7d32', marginBottom: '0.5rem' }}>✅ Profile Complete!</h3>
-                <p style={{ color: '#666' }}>
+                <h3 style={{ color: '#1f2937', marginBottom: '0.5rem', fontWeight: 'bold' }}>✅ Profile Complete!</h3>
+                <p style={{ color: '#1f2937' }}>
                   Your clinic is now visible on the Clinics page. Patients can find you and book sessions!
                 </p>
               </div>
@@ -886,10 +907,14 @@ function MyProfile({ user, setUser }) {
                 <div 
                   key={patient.id} 
                   style={{
-                    background: '#f8f9fa',
+                    background: 'rgba(255, 255, 255, 0.25)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
                     padding: '1.5rem',
                     borderRadius: '15px',
                     marginBottom: '1rem',
+                    boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
                     transition: 'transform 0.2s'
                   }}
                 >
@@ -899,8 +924,8 @@ function MyProfile({ user, setUser }) {
                     alignItems: 'center'
                   }}>
                     <div>
-                      <h3 style={{ color: '#333' }}>{patient.username}</h3>
-                      <p style={{ color: '#666', fontSize: '0.95rem' }}>{patient.email}</p>
+                      <h3 style={{ color: '#1f2937' }}>{patient.username}</h3>
+                      <p style={{ color: '#1f2937', fontSize: '0.95rem' }}>{patient.email}</p>
                     </div>
                     <div style={{
                       padding: '0.8rem 1.5rem',
@@ -940,15 +965,19 @@ function MyProfile({ user, setUser }) {
             {chatRequests.filter(r => r.status === 'pending').length > 0 ? (
               chatRequests.filter(r => r.status === 'pending').map(request => (
                 <div key={request.id} style={{
-                  background: '#f8f9fa',
+                  background: 'rgba(255, 255, 255, 0.25)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
                   padding: '1.5rem',
                   borderRadius: '15px',
-                  marginBottom: '1rem'
+                  marginBottom: '1rem',
+                  boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
                 }}>
-                  <h3 style={{ color: '#333', marginBottom: '0.5rem' }}>
+                  <h3 style={{ color: '#1f2937', marginBottom: '0.5rem' }}>
                     From: {request.from_user.username}
                   </h3>
-                  <p style={{ color: '#666', marginBottom: '1rem' }}>{request.message}</p>
+                  <p style={{ color: '#1f2937', marginBottom: '1rem' }}>{request.message}</p>
                   <div style={{ display: 'flex', gap: '1rem' }}>
                     <button
                       onClick={() => handleChatRequestAction(request.id, 'approved')}
@@ -985,9 +1014,13 @@ function MyProfile({ user, setUser }) {
               <div style={{ 
                 textAlign: 'center', 
                 padding: '3rem', 
-                color: '#999',
-                background: '#f8f9fa',
-                borderRadius: '15px'
+                color: '#1f2937',
+                background: 'rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '15px',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
               }}>
                 <p style={{ fontSize: '1.1rem' }}>No pending chat requests</p>
               </div>
@@ -1005,10 +1038,14 @@ function MyProfile({ user, setUser }) {
                 <div 
                   key={article.id} 
                   style={{
-                    background: '#f8f9fa',
+                    background: 'rgba(255, 255, 255, 0.25)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
                     padding: '1.5rem',
                     borderRadius: '15px',
                     marginBottom: '1rem',
+                    boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
                     transition: 'transform 0.2s'
                   }}
                 >
@@ -1021,7 +1058,7 @@ function MyProfile({ user, setUser }) {
                     <div style={{ flex: 1 }}>
                       <h3 
                         style={{ 
-                          color: '#333', 
+                          color: '#1f2937', 
                           marginBottom: '0.5rem',
                           cursor: 'pointer'
                         }}
@@ -1030,7 +1067,7 @@ function MyProfile({ user, setUser }) {
                         {article.title}
                       </h3>
                       <p style={{ 
-                        color: '#666', 
+                        color: '#1f2937', 
                         fontSize: '0.95rem',
                         marginBottom: '0.5rem'
                       }}>
@@ -1038,7 +1075,7 @@ function MyProfile({ user, setUser }) {
                       </p>
                       <div style={{ 
                         fontSize: '0.9rem', 
-                        color: '#999',
+                        color: '#1f2937',
                         marginTop: '0.5rem'
                       }}>
                         👍 {article.like_count} likes • 💬 {article.comment_count} comments
@@ -1094,9 +1131,13 @@ function MyProfile({ user, setUser }) {
               <div style={{ 
                 textAlign: 'center', 
                 padding: '3rem', 
-                color: '#999',
-                background: '#f8f9fa',
-                borderRadius: '15px'
+                color: '#1f2937',
+                background: 'rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '15px',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
               }}>
                 <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>
                   No articles yet. Start sharing your knowledge!
@@ -1158,6 +1199,25 @@ function MyProfile({ user, setUser }) {
                   placeholder="mental health, anxiety, stress relief"
                 />
               </div>
+              <div className="form-group">
+                <label>Cover Image *</label>
+                <input
+                  type="file"
+                  accept="image/png, image/jpeg, image/jpg, image/gif, image/webp"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      setArticleForm({...articleForm, cover_image: file});
+                    }
+                  }}
+                  required
+                />
+                {articleForm.cover_image && (
+                  <small style={{ color: '#4CAF50', display: 'block', marginTop: '0.5rem' }}>
+                    ✓ Selected: {articleForm.cover_image.name}
+                  </small>
+                )}
+              </div>
               <button type="submit" className="submit-btn">
                 Publish Article
               </button>
@@ -1186,10 +1246,14 @@ function MyProfile({ user, setUser }) {
 
             {journals.map(journal => (
               <div key={journal.id} style={{
-                background: '#f8f9fa',
+                background: 'rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
                 padding: '1.5rem',
                 borderRadius: '15px',
-                marginBottom: '1rem'
+                marginBottom: '1rem',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
               }}>
                 <div style={{ 
                   display: 'flex', 
@@ -1197,7 +1261,7 @@ function MyProfile({ user, setUser }) {
                   alignItems: 'start',
                   marginBottom: '0.5rem'
                 }}>
-                  <h3 style={{ color: '#333' }}>{journal.title}</h3>
+                  <h3 style={{ color: '#1f2937' }}>{journal.title}</h3>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button
                       onClick={() => handleTogglePublic(journal)}
@@ -1229,11 +1293,11 @@ function MyProfile({ user, setUser }) {
                     </button>
                   </div>
                 </div>
-                <p style={{ color: '#666', whiteSpace: 'pre-wrap' }}>{journal.content}</p>
+                <p style={{ color: '#1f2937', whiteSpace: 'pre-wrap' }}>{journal.content}</p>
                 <div style={{ 
                   marginTop: '0.8rem',
                   fontSize: '0.9rem',
-                  color: '#999'
+                  color: '#1f2937'
                 }}>
                   ❤️ {journal.heart_count} hearts • 💬 {journal.comment_count} comments
                 </div>
@@ -1254,24 +1318,30 @@ function MyProfile({ user, setUser }) {
             <h2 style={{ marginBottom: '1.5rem' }}>Inbox</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1rem' }}>
               <div style={{
-                background: '#f8f9fa',
+                background: 'rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
                 padding: '1rem',
                 borderRadius: '12px',
                 maxHeight: '480px',
-                overflowY: 'auto'
+                overflowY: 'auto',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
               }}>
                 {threads.length === 0 && (
-                  <p style={{ color: '#999' }}>No conversations yet.</p>
+                  <p style={{ color: '#1f2937' }}>No conversations yet.</p>
                 )}
                 {threads.map(thread => (
                   <div
                     key={thread.id}
                     style={{
                       padding: '0.8rem',
-                      background: selectedThreadId === thread.id ? 'white' : '#eef2f7',
+                      background: selectedThreadId === thread.id ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.2)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
                       borderRadius: '10px',
                       marginBottom: '0.6rem',
-                      border: '1px solid #e0e0e0',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
                       position: 'relative'
                     }}
                   >
@@ -1284,8 +1354,8 @@ function MyProfile({ user, setUser }) {
                       }}
                       style={{ cursor: 'pointer' }}
                     >
-                      <div style={{ fontWeight: 600, color: '#333' }}>{thread.thread_type === 'user_user' ? 'Friend Chat' : 'Doctor Chat'}</div>
-                      <div style={{ fontSize: '0.85rem', color: '#666' }}>
+                      <div style={{ fontWeight: 600, color: '#1f2937' }}>{thread.thread_type === 'user_user' ? 'Friend Chat' : 'Doctor Chat'}</div>
+                      <div style={{ fontSize: '0.85rem', color: '#1f2937' }}>
                         With: {(() => {
                           const participants = (thread.participants || []);
                           const others = participants.filter(p => p.id !== user.id);
@@ -1293,7 +1363,7 @@ function MyProfile({ user, setUser }) {
                         })()}
                       </div>
                       {thread.last_message && thread.last_message.content && (
-                        <div style={{ fontSize: '0.85rem', color: '#999', marginTop: '0.3rem' }}>
+                        <div style={{ fontSize: '0.85rem', color: '#1f2937', marginTop: '0.3rem' }}>
                           "{thread.last_message.content.length > 80 ? thread.last_message.content.slice(0, 80) + '…' : thread.last_message.content}"
                         </div>
                       )}
@@ -1332,26 +1402,32 @@ function MyProfile({ user, setUser }) {
                 ))}
               </div>
               <div style={{
-                background: '#f8f9fa',
+                background: 'rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
                 padding: '1rem',
                 borderRadius: '12px',
-                minHeight: '300px'
+                minHeight: '300px',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
               }}>
                 {!selectedThreadId ? (
-                  <p style={{ color: '#999' }}>Select a conversation to view messages.</p>
+                  <p style={{ color: '#1f2937' }}>Select a conversation to view messages.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                     <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1rem' }}>
                       {(Array.isArray(threadMessages) ? threadMessages : []).map(m => (
                         <div key={m.id} style={{
-                          background: m.sender.id === user.id ? '#dbe7ff' : 'white',
+                          background: m.sender.id === user.id ? 'rgba(127, 127, 213, 0.25)' : 'rgba(255, 255, 255, 0.35)',
+                          backdropFilter: 'blur(8px)',
+                          WebkitBackdropFilter: 'blur(8px)',
+                          border: '1px solid rgba(255, 255, 255, 0.3)',
                           padding: '0.8rem',
                           borderRadius: '10px',
-                          marginBottom: '0.6rem',
-                          border: '1px solid #e0e0e0'
+                          marginBottom: '0.6rem'
                         }}>
-                          <div style={{ fontWeight: 600 }}>{m.sender.username}</div>
-                          <div style={{ color: '#333' }}>{m.content}</div>
+                          <div style={{ fontWeight: 600, color: '#1f2937' }}>{m.sender.username}</div>
+                          <div style={{ color: '#1f2937' }}>{m.content}</div>
                         </div>
                       ))}
                     </div>
@@ -1361,7 +1437,16 @@ function MyProfile({ user, setUser }) {
                         value={messageText}
                         onChange={e => setMessageText(e.target.value)}
                         placeholder="Type a message..."
-                        style={{ flex: 1, padding: '0.8rem', border: '2px solid #e0e0e0', borderRadius: '10px' }}
+                        style={{ 
+                          flex: 1, 
+                          padding: '0.8rem', 
+                          border: '1px solid rgba(255, 255, 255, 0.3)', 
+                          borderRadius: '10px',
+                          background: 'rgba(255, 255, 255, 0.35)',
+                          backdropFilter: 'blur(8px)',
+                          WebkitBackdropFilter: 'blur(8px)',
+                          color: '#1f2937'
+                        }}
                       />
                       <button
                         onClick={async () => {
@@ -1390,10 +1475,14 @@ function MyProfile({ user, setUser }) {
             <h2 style={{ marginBottom: '1.5rem' }}>Friends</h2>
             
             <div style={{ 
-              background: '#f8f9fa',
+              background: 'rgba(255, 255, 255, 0.25)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
               padding: '1.5rem',
               borderRadius: '15px',
-              marginBottom: '2rem'
+              marginBottom: '2rem',
+              boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
             }}>
               <h3 style={{ marginBottom: '1rem' }}>Add Friends</h3>
               <div style={{ display: 'flex', gap: '1rem' }}>
@@ -1406,8 +1495,12 @@ function MyProfile({ user, setUser }) {
                   style={{
                     flex: 1,
                     padding: '0.8rem',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '10px'
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.35)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    color: '#1f2937'
                   }}
                 />
                 <button onClick={handleSearch} className="submit-btn" style={{ width: 'auto' }}>
@@ -1423,11 +1516,14 @@ function MyProfile({ user, setUser }) {
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       padding: '0.8rem',
-                      background: 'white',
+                      background: 'rgba(255, 255, 255, 0.35)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
                       borderRadius: '10px',
                       marginTop: '0.5rem'
                     }}>
-                      <span>{result.username} ({result.full_name || 'No name'})</span>
+                      <span style={{ color: '#1f2937' }}>{result.username} ({result.full_name || 'No name'})</span>
                       <button
                         onClick={() => handleAddFriend(result.id)}
                         style={{
@@ -1450,13 +1546,16 @@ function MyProfile({ user, setUser }) {
             {/* Friend Requests Section */}
             {friendRequests.length > 0 && (
               <div style={{ 
-                background: '#fff3cd',
+                background: 'rgba(255, 193, 7, 0.15)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
                 padding: '1.5rem',
                 borderRadius: '15px',
                 marginBottom: '2rem',
-                border: '2px solid #ffc107'
+                border: '1px solid rgba(255, 193, 7, 0.3)',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
               }}>
-                <h3 style={{ marginBottom: '1rem', color: '#856404' }}>Friend Requests ({friendRequests.length})</h3>
+                <h3 style={{ marginBottom: '1rem', color: '#1f2937', fontWeight: 'bold' }}>Friend Requests ({friendRequests.length})</h3>
                 {friendRequests.map(req => (
                   <div 
                     key={req.id}
@@ -1465,7 +1564,10 @@ function MyProfile({ user, setUser }) {
                       alignItems: 'center',
                       gap: '1rem',
                       padding: '1rem',
-                      background: 'white',
+                      background: 'rgba(255, 255, 255, 0.35)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
                       borderRadius: '10px',
                       marginBottom: '0.8rem'
                     }}
@@ -1506,8 +1608,8 @@ function MyProfile({ user, setUser }) {
                       )}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: '600', color: '#333' }}>{req.from_user.username}</div>
-                      <div style={{ fontSize: '0.9rem', color: '#666' }}>
+                      <div style={{ fontWeight: '600', color: '#1f2937' }}>{req.from_user.username}</div>
+                      <div style={{ fontSize: '0.9rem', color: '#1f2937' }}>
                         {req.from_user.full_name || 'No name'}
                       </div>
                     </div>
@@ -1541,9 +1643,13 @@ function MyProfile({ user, setUser }) {
                     alignItems: 'center',
                     gap: '1rem',
                     padding: '1rem',
-                    background: '#f8f9fa',
+                    background: 'rgba(255, 255, 255, 0.25)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
                     borderRadius: '15px',
                     marginBottom: '0.8rem',
+                    boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
                     cursor: 'default'
                   }}
                 >
@@ -1583,8 +1689,8 @@ function MyProfile({ user, setUser }) {
                     )}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: '600', color: '#333' }}>{friend.username}</div>
-                    <div style={{ fontSize: '0.9rem', color: '#666' }}>
+                    <div style={{ fontWeight: '600', color: '#1f2937' }}>{friend.username}</div>
+                    <div style={{ fontSize: '0.9rem', color: '#1f2937' }}>
                       {friend.full_name || 'No name'}
                     </div>
                   </div>

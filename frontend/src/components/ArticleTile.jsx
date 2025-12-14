@@ -3,11 +3,19 @@ import { useNavigate } from 'react-router-dom';
 
 function ArticleTile({ article }) {
   const navigate = useNavigate();
+  
+  const API_BASE = process.env.REACT_APP_API_URL 
+    ? process.env.REACT_APP_API_URL.replace('/api', '') 
+    : 'http://127.0.0.1:5050';
+  
+  const coverImageUrl = article.cover_image 
+    ? `${API_BASE}${article.cover_image}` 
+    : 'https://via.placeholder.com/400x200?text=Article';
 
   return (
     <div className="tile" onClick={() => navigate(`/articles/${article.id}`)}>
       <img 
-        src={article.cover_image || 'https://via.placeholder.com/400x200?text=Article'} 
+        src={coverImageUrl} 
         alt={article.title}
         className="tile-image"
       />

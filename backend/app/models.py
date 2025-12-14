@@ -171,13 +171,13 @@ class MoodEntry(db.Model):
 
 class Article(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.id'), nullable=False)
-    title = db.Column(db.String(200), nullable=False)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.id'), nullable=False, index=True)
+    title = db.Column(db.String(200), nullable=False, index=True)
     content = db.Column(db.Text, nullable=False)
-    cover_image = db.Column(db.String(255))
-    mood_category = db.Column(db.String(50))  # happy, sad, anxious, stressed, neutral
+    cover_image = db.Column(db.String(255), nullable=False)  # Mandatory cover image
+    mood_category = db.Column(db.String(50), index=True)  # happy, sad, anxious, stressed, neutral
     keywords = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     
     # Relationships
     author = db.relationship('Doctor', backref='articles', lazy=True)

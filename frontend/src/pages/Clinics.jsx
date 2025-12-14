@@ -66,11 +66,14 @@ function Clinics() {
   return (
     <div className="container" style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
       <div style={{ 
-        background: 'white', 
+        background: 'rgba(255, 255, 255, 0.25)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
         borderRadius: '20px', 
         padding: '2rem',
         marginBottom: '2rem',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
       }}>
         <input
           type="text"
@@ -82,9 +85,13 @@ function Clinics() {
             width: '100%',
             padding: '1rem',
             fontSize: '1rem',
-            border: '2px solid #e0e0e0',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
             borderRadius: '10px',
-            outline: 'none'
+            outline: 'none',
+            background: 'rgba(255, 255, 255, 0.35)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            color: '#1f2937'
           }}
         />
         
@@ -102,9 +109,12 @@ function Clinics() {
             style={{
               padding: '0.5rem 1rem',
               fontSize: '0.9rem',
-              border: '2px solid #e0e0e0',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
               borderRadius: '8px',
-              background: 'white',
+              background: 'rgba(255, 255, 255, 0.35)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              color: '#1f2937',
               cursor: 'pointer'
             }}
           >
@@ -121,9 +131,12 @@ function Clinics() {
             style={{
               padding: '0.5rem 1rem',
               fontSize: '0.9rem',
-              border: '2px solid #e0e0e0',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
               borderRadius: '8px',
-              background: 'white',
+              background: 'rgba(255, 255, 255, 0.35)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              color: '#1f2937',
               cursor: 'pointer'
             }}
           >
@@ -182,10 +195,10 @@ function Clinics() {
                     border: '4px solid #f0f0f0'
                   }}
                 />
-                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: '#333' }}>
+                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: '#1f2937' }}>
                   {clinic.user.full_name || clinic.user.username}
                 </h3>
-                <p style={{ fontSize: '0.9rem', color: '#666' }}>
+                <p style={{ fontSize: '0.9rem', color: '#1f2937' }}>
                   ⭐ {(clinic.average_rating || 0).toFixed(1)}
                 </p>
               </div>
@@ -197,7 +210,7 @@ function Clinics() {
         Object.entries(groupedClinics).map(([specialization, clinicsInGroup]) => (
           <div key={specialization} style={{ marginBottom: '3rem' }}>
             <h2 style={{ 
-              color: '#333', 
+              color: 'white', 
               marginBottom: '1.5rem',
               fontSize: '1.5rem',
               fontWeight: '600'
@@ -219,21 +232,26 @@ function Clinics() {
                     key={clinic.id}
                     onClick={() => window.location.href = `/clinics/${clinic.id}`}
                     style={{
-                      background: 'white',
+                      background: 'rgba(255, 255, 255, 0.25)',
+                      backdropFilter: 'blur(12px)',
+                      WebkitBackdropFilter: 'blur(12px)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
                       borderRadius: '20px',
                       padding: '2rem',
                       textAlign: 'center',
                       cursor: 'pointer',
                       transition: 'transform 0.2s, box-shadow 0.2s',
-                      boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
+                      boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.transform = 'translateY(-5px)';
-                      e.currentTarget.style.boxShadow = '0 8px 25px rgba(0,0,0,0.15)';
+                      e.currentTarget.style.boxShadow = '0 8px 40px rgba(0, 0, 0, 0.15)';
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.35)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)';
+                      e.currentTarget.style.boxShadow = '0 4px 30px rgba(0, 0, 0, 0.1)';
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
                     }}
                   >
                     <img
@@ -248,10 +266,10 @@ function Clinics() {
                         border: '4px solid #f0f0f0'
                       }}
                     />
-                    <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: '#333' }}>
+                    <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: '#1f2937' }}>
                       {clinic.user.full_name || clinic.user.username}
                     </h3>
-                    <p style={{ fontSize: '0.9rem', color: '#666' }}>
+                    <p style={{ fontSize: '0.9rem', color: '#1f2937' }}>
                       ⭐ {(clinic.average_rating || 0).toFixed(1)}
                     </p>
                   </div>
@@ -263,7 +281,17 @@ function Clinics() {
       )}
 
       {!loading && clinics.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#666' }}>
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '3rem', 
+          background: 'rgba(255, 255, 255, 0.25)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
+          borderRadius: '20px',
+          boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+          color: '#1f2937'
+        }}>
           <h3>No clinics found</h3>
           <p>Try adjusting your search filters</p>
         </div>
