@@ -44,6 +44,7 @@ function JournalTile({ journal }) {
                 <img 
                   src={`${process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050'}/${journal.author.profile_picture}`}
                   alt={journal.author.username}
+                  loading="lazy"
                   style={{
                     width: '100%',
                     height: '100%',

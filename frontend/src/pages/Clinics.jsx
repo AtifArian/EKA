@@ -67,8 +67,8 @@ function Clinics() {
     <div className="container" style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
       <div style={{ 
         background: 'rgba(255, 255, 255, 0.25)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        backdropFilter: 'blur(6px)',
+        WebkitbackdropFilter: 'blur(6px)',
         border: '1px solid rgba(255, 255, 255, 0.3)',
         borderRadius: '20px', 
         padding: '2rem',
@@ -233,8 +233,8 @@ function Clinics() {
                     onClick={() => window.location.href = `/clinics/${clinic.id}`}
                     style={{
                       background: 'rgba(255, 255, 255, 0.25)',
-                      backdropFilter: 'blur(12px)',
-                      WebkitBackdropFilter: 'blur(12px)',
+                      backdropFilter: 'blur(6px)',
+                      WebkitbackdropFilter: 'blur(6px)',
                       border: '1px solid rgba(255, 255, 255, 0.3)',
                       borderRadius: '20px',
                       padding: '2rem',
@@ -285,8 +285,8 @@ function Clinics() {
           textAlign: 'center', 
           padding: '3rem', 
           background: 'rgba(255, 255, 255, 0.25)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
+          backdropFilter: 'blur(6px)',
+          WebkitbackdropFilter: 'blur(6px)',
           border: '1px solid rgba(255, 255, 255, 0.3)',
           borderRadius: '20px',
           boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',

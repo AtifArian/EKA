@@ -18,8 +18,11 @@ function Articles({ user }) {
 
   useEffect(() => {
     fetchArticles();
+  }, [filters.search, filters.sort]);
+
+  useEffect(() => {
     fetchTopArticles();
-  }, [filters]);
+  }, []);
 
   useEffect(() => {
     if (topArticles.length > 0) {
@@ -28,7 +31,7 @@ function Articles({ user }) {
       }, 5000);
       return () => clearInterval(interval);
     }
-  }, [topArticles]);
+  }, [topArticles.length]);
 
   const fetchArticles = async () => {
     setLoading(true);
@@ -80,6 +83,7 @@ function Articles({ user }) {
                   <img 
                     src={coverImageUrl} 
                     alt={article.title}
+                    loading="lazy"
                     style={{
                       width: '250px',
                       height: '200px',

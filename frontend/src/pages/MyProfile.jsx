@@ -468,8 +468,8 @@ function MyProfile({ user, setUser }) {
     <div className="container">
       <div style={{
         background: 'rgba(255, 255, 255, 0.25)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        backdropFilter: 'blur(6px)',
+        WebkitbackdropFilter: 'blur(6px)',
         border: '1px solid rgba(255, 255, 255, 0.3)',
         borderRadius: '25px',
         padding: '3rem',
@@ -925,8 +925,8 @@ function MyProfile({ user, setUser }) {
                 marginTop: '2rem', 
                 padding: '1.5rem', 
                 background: 'rgba(46, 125, 50, 0.15)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
+                backdropFilter: 'blur(6px)',
+                WebkitbackdropFilter: 'blur(6px)',
                 border: '1px solid rgba(46, 125, 50, 0.3)',
                 borderRadius: '15px',
                 boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
@@ -951,8 +951,8 @@ function MyProfile({ user, setUser }) {
                   key={patient.id} 
                   style={{
                     background: 'rgba(255, 255, 255, 0.25)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
+                    backdropFilter: 'blur(6px)',
+                    WebkitbackdropFilter: 'blur(6px)',
                     border: '1px solid rgba(255, 255, 255, 0.3)',
                     padding: '1.5rem',
                     borderRadius: '15px',
@@ -1029,8 +1029,8 @@ function MyProfile({ user, setUser }) {
                     key={session.id} 
                     style={{
                       background: 'rgba(255, 255, 255, 0.25)',
-                      backdropFilter: 'blur(12px)',
-                      WebkitBackdropFilter: 'blur(12px)',
+                      backdropFilter: 'blur(6px)',
+                      WebkitbackdropFilter: 'blur(6px)',
                       border: '1px solid rgba(255, 255, 255, 0.3)',
                       padding: '1.5rem',
                       borderRadius: '15px',
@@ -1214,8 +1214,8 @@ function MyProfile({ user, setUser }) {
                 padding: '3rem', 
                 color: '#1f2937',
                 background: 'rgba(255, 255, 255, 0.25)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
+                backdropFilter: 'blur(6px)',
+                WebkitbackdropFilter: 'blur(6px)',
                 border: '1px solid rgba(255, 255, 255, 0.3)',
                 borderRadius: '15px',
                 boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
@@ -1237,8 +1237,8 @@ function MyProfile({ user, setUser }) {
               chatRequests.filter(r => r.status === 'pending').map(request => (
                 <div key={request.id} style={{
                   background: 'rgba(255, 255, 255, 0.25)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
+                  backdropFilter: 'blur(6px)',
+                  WebkitbackdropFilter: 'blur(6px)',
                   border: '1px solid rgba(255, 255, 255, 0.3)',
                   padding: '1.5rem',
                   borderRadius: '15px',
@@ -1287,8 +1287,8 @@ function MyProfile({ user, setUser }) {
                 padding: '3rem', 
                 color: '#1f2937',
                 background: 'rgba(255, 255, 255, 0.25)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
+                backdropFilter: 'blur(6px)',
+                WebkitbackdropFilter: 'blur(6px)',
                 border: '1px solid rgba(255, 255, 255, 0.3)',
                 borderRadius: '15px',
                 boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
@@ -1310,8 +1310,8 @@ function MyProfile({ user, setUser }) {
                   key={article.id} 
                   style={{
                     background: 'rgba(255, 255, 255, 0.25)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
+                    backdropFilter: 'blur(6px)',
+                    WebkitbackdropFilter: 'blur(6px)',
                     border: '1px solid rgba(255, 255, 255, 0.3)',
                     padding: '1.5rem',
                     borderRadius: '15px',
@@ -1404,8 +1404,8 @@ function MyProfile({ user, setUser }) {
                 padding: '3rem', 
                 color: '#1f2937',
                 background: 'rgba(255, 255, 255, 0.25)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
+                backdropFilter: 'blur(6px)',
+                WebkitbackdropFilter: 'blur(6px)',
                 border: '1px solid rgba(255, 255, 255, 0.3)',
                 borderRadius: '15px',
                 boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
@@ -1472,6 +1472,9 @@ function MyProfile({ user, setUser }) {
               </div>
               <div className="form-group">
                 <label>Cover Image *</label>
+                <small style={{ display: 'block', color: '#666', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
+                  Recommended: 500×400px | Format: JPEG or WebP | Max size: 150 KB
+                </small>
                 <input
                   type="file"
                   accept="image/png, image/jpeg, image/jpg, image/gif, image/webp"
@@ -1518,8 +1521,8 @@ function MyProfile({ user, setUser }) {
             {journals.map(journal => (
               <div key={journal.id} style={{
                 background: 'rgba(255, 255, 255, 0.25)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
+                backdropFilter: 'blur(6px)',
+                WebkitbackdropFilter: 'blur(6px)',
                 border: '1px solid rgba(255, 255, 255, 0.3)',
                 padding: '1.5rem',
                 borderRadius: '15px',
@@ -1612,8 +1615,8 @@ function MyProfile({ user, setUser }) {
                     key={booking.id} 
                     style={{
                       background: 'rgba(255, 255, 255, 0.25)',
-                      backdropFilter: 'blur(12px)',
-                      WebkitBackdropFilter: 'blur(12px)',
+                      backdropFilter: 'blur(6px)',
+                      WebkitbackdropFilter: 'blur(6px)',
                       border: '1px solid rgba(255, 255, 255, 0.3)',
                       padding: '1.5rem',
                       borderRadius: '15px',
@@ -1755,8 +1758,8 @@ function MyProfile({ user, setUser }) {
                 padding: '3rem', 
                 color: '#1f2937',
                 background: 'rgba(255, 255, 255, 0.25)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
+                backdropFilter: 'blur(6px)',
+                WebkitbackdropFilter: 'blur(6px)',
                 border: '1px solid rgba(255, 255, 255, 0.3)',
                 borderRadius: '15px',
                 boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
@@ -1776,8 +1779,8 @@ function MyProfile({ user, setUser }) {
             <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1rem' }}>
               <div style={{
                 background: 'rgba(255, 255, 255, 0.25)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
+                backdropFilter: 'blur(6px)',
+                WebkitbackdropFilter: 'blur(6px)',
                 border: '1px solid rgba(255, 255, 255, 0.3)',
                 padding: '1rem',
                 borderRadius: '12px',
@@ -1860,8 +1863,8 @@ function MyProfile({ user, setUser }) {
               </div>
               <div style={{
                 background: 'rgba(255, 255, 255, 0.25)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
+                backdropFilter: 'blur(6px)',
+                WebkitbackdropFilter: 'blur(6px)',
                 border: '1px solid rgba(255, 255, 255, 0.3)',
                 padding: '1rem',
                 borderRadius: '12px',
@@ -1933,8 +1936,8 @@ function MyProfile({ user, setUser }) {
             
             <div style={{ 
               background: 'rgba(255, 255, 255, 0.25)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
+              backdropFilter: 'blur(6px)',
+              WebkitbackdropFilter: 'blur(6px)',
               border: '1px solid rgba(255, 255, 255, 0.3)',
               padding: '1.5rem',
               borderRadius: '15px',
@@ -2004,8 +2007,8 @@ function MyProfile({ user, setUser }) {
             {friendRequests.length > 0 && (
               <div style={{ 
                 background: 'rgba(255, 193, 7, 0.15)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
+                backdropFilter: 'blur(6px)',
+                WebkitbackdropFilter: 'blur(6px)',
                 padding: '1.5rem',
                 borderRadius: '15px',
                 marginBottom: '2rem',
@@ -2101,8 +2104,8 @@ function MyProfile({ user, setUser }) {
                     gap: '1rem',
                     padding: '1rem',
                     background: 'rgba(255, 255, 255, 0.25)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
+                    backdropFilter: 'blur(6px)',
+                    WebkitbackdropFilter: 'blur(6px)',
                     border: '1px solid rgba(255, 255, 255, 0.3)',
                     borderRadius: '15px',
                     marginBottom: '0.8rem',

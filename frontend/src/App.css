@@ -2,18 +2,23 @@ body {
   margin: 0;
   font-family: var(--font-sans);
   background: var(--bg-gradient);
-  background-attachment: fixed;
   min-height: 100vh;
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .app {
   min-height: 100vh;
+  isolation: isolate;
 }
 
 /* Navbar Styles */
 .navbar {
   background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(5px);
   padding: var(--spacing-lg) var(--spacing-3xl);
   display: flex;
   justify-content: space-between;
@@ -159,8 +164,8 @@ body {
 /* Tile Styles */
 .tile {
   background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--radius-3xl);
   padding: var(--spacing-lg);
@@ -169,6 +174,8 @@ body {
   cursor: pointer;
   position: relative;
   overflow: hidden;
+  will-change: transform;
+  contain: layout style paint;
 }
 
 .tile:hover {
@@ -215,8 +222,8 @@ body {
 /* Mood Tracker */
 .mood-tracker {
   background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--radius-3xl);
   padding: var(--spacing-3xl);
@@ -248,8 +255,8 @@ body {
   padding: var(--spacing-md);
   border-radius: var(--radius-full);
   background: rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .mood-emoji:hover {
@@ -278,8 +285,8 @@ body {
   gap: var(--spacing-md);
   padding: var(--spacing-lg);
   background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--radius-2xl);
   margin-bottom: var(--spacing-xl);
@@ -298,8 +305,8 @@ body {
   font-size: 1rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   background: rgba(255, 255, 255, 0.35);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   color: #1f2937;
 }
 
@@ -323,8 +330,8 @@ body {
 
 .floating-tile {
   background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--radius-2xl);
   padding: var(--spacing-2xl);
@@ -379,8 +386,8 @@ body {
 /* Hero Section */
 .hero-section {
   background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--radius-3xl);
   padding: var(--spacing-4xl);
@@ -421,8 +428,8 @@ body {
 /* Forms */
 .form-container {
   background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--radius-3xl);
   padding: var(--spacing-3xl);
@@ -461,8 +468,8 @@ body {
   font-size: 1rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   background: rgba(255, 255, 255, 0.35);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   color: #1f2937;
 }
 
@@ -505,8 +512,8 @@ body {
 .comments-section {
   margin-top: var(--spacing-3xl);
   background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--radius-2xl);
   padding: var(--spacing-xl);
@@ -581,14 +588,6 @@ body {
   width: 100%;
   height: auto;
   animation: fadeIn 1s ease;
-  background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: var(--radius-3xl);
-  padding: var(--spacing-3xl);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-  text-align: center;
 }
 
 .slide.active {
@@ -623,10 +622,9 @@ body {
 .slide img {
   width: 100%;
   height: auto;
-  object-fit: contain;
+  object-fit: cover;
   display: block;
-  border-radius: var(--radius-3xl);
-  box-shadow: var(--shadow-xl);
+  border-radius: 20px;
   margin: 0;
   padding: 0;
 }

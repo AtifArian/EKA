@@ -4,6 +4,16 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+  overflow-y: scroll;
+}
+
+body {
+  -webkit-overflow-scrolling: touch;
+  overflow-x: hidden;
+}
+
 :root {
   /* Figma Gradient Background Colors */
   --bg-gradient: linear-gradient(to right, #5871b1 0%, #7a85b7 33.33%, #b1a8bd 66.66%, #d7c1c3 100%);

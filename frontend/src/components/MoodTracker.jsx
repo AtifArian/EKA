@@ -120,8 +120,8 @@ function MoodTracker() {
       <div style={{
         position: 'fixed', bottom: '15px', left: '15px', 
         background: 'rgba(255, 255, 255, 0.25)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        backdropFilter: 'blur(6px)',
+        WebkitbackdropFilter: 'blur(6px)',
         border: '1px solid rgba(255, 255, 255, 0.3)',
         boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
         padding: '0.6rem 1rem', borderRadius: '12px',

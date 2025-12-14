@@ -18,6 +18,7 @@ function ArticleTile({ article }) {
         src={coverImageUrl} 
         alt={article.title}
         className="tile-image"
+        loading="lazy"
       />
       <div className="tile-content">
         <h3>{article.title}</h3>
@@ -40,6 +41,7 @@ function ArticleTile({ article }) {
               <img 
                 src={`${process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050'}/${article.author.profile_picture}`}
                 alt={article.author.username}
+                loading="lazy"
                 style={{
                   width: '100%',
                   height: '100%',
