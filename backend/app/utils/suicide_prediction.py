@@ -36,7 +36,7 @@ def analyze_mood_trend(user_id):
     ).order_by(MoodEntry.date.desc()).all()
     
     if not moods:
-        return 50
+        return 20
     
     avg_mood = sum(m.mood_level for m in moods) / len(moods)
     
@@ -58,7 +58,7 @@ def analyze_article_preferences(user_id):
     liked_articles = ArticleLike.query.filter_by(user_id=user_id).all()
     
     if not liked_articles:
-        return 50
+        return 20
     
     sad_anxious_count = 0
     total_count = len(liked_articles)
@@ -78,12 +78,12 @@ def analyze_journal_sentiments(user_id):
     ).limit(10).all()
     
     if not journals:
-        return 50
+        return 20
     
     sentiments = [j.sentiment_score for j in journals if j.sentiment_score is not None]
     
     if not sentiments:
-        return 50
+        return 20
     
     avg_sentiment = sum(sentiments) / len(sentiments)
     risk = (1 - (avg_sentiment + 1) / 2) * 100

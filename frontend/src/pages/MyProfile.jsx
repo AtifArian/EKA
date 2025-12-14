@@ -975,7 +975,7 @@ function MyProfile({ user, setUser }) {
                       borderRadius: '10px',
                       fontWeight: '600',
                       fontSize: '1.1rem',
-                      background: patient.suicide_risk_score > 70 ? '#e74c3c' : 
+                      background: patient.suicide_risk_score > 85 ? '#7a0707ff' :patient.suicide_risk_score > 70 ? '#e74c3c' : 
                                  patient.suicide_risk_score > 40 ? '#f39c12' : '#4CAF50',
                       color: 'white'
                     }}>
