@@ -19,7 +19,12 @@ import {
   getMyArticles,
   deleteArticle,
   uploadProfilePicture,
-  deleteProfilePicture
+  deleteProfilePicture,
+  getMyBookings,
+  getMySessions,
+  cancelBooking,
+  completeBooking,
+  confirmBooking
 } from '../services/api';
 import {
   listThreads,
@@ -47,6 +52,8 @@ function MyProfile({ user, setUser }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showJournalForm, setShowJournalForm] = useState(false);
+  const [bookings, setBookings] = useState([]);
+  const [sessions, setSessions] = useState([]);
   
   const [journalForm, setJournalForm] = useState({
     title: '',
@@ -135,6 +142,12 @@ function MyProfile({ user, setUser }) {
         // reset thread view when switching into inbox
         setSelectedThreadId(null);
         setThreadMessages([]);
+      } else if (activeTab === 'my-bookings' && !user.is_doctor) {
+        const data = await getMyBookings();
+        setBookings(data);
+      } else if (activeTab === 'my-sessions' && user.is_doctor) {
+        const data = await getMySessions();
+        setSessions(data);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -632,6 +645,21 @@ function MyProfile({ user, setUser }) {
                 My Journals
               </button>
               <button
+                onClick={() => setActiveTab('my-bookings')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '1rem 1.5rem',
+                  fontSize: '1.05rem',
+                  fontWeight: '600',
+                  color: activeTab === 'my-bookings' ? '#7F7FD5' : '#000',
+                  borderBottom: activeTab === 'my-bookings' ? '3px solid #7F7FD5' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                📅 My Sessions
+              </button>
+              <button
                 onClick={() => setActiveTab('friends')}
                 style={{
                   background: 'none',
@@ -719,6 +747,21 @@ function MyProfile({ user, setUser }) {
                     borderRadius: '50%'
                   }}/>
                 )}
+              </button>
+              <button
+                onClick={() => setActiveTab('my-sessions')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '1rem 1.5rem',
+                  fontSize: '1.05rem',
+                  fontWeight: '600',
+                  color: activeTab === 'my-sessions' ? '#7F7FD5' : '#000',
+                  borderBottom: activeTab === 'my-sessions' ? '3px solid #7F7FD5' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                📅 My Sessions
               </button>
               <button
                 onClick={() => setActiveTab('my-articles')}
@@ -951,6 +994,234 @@ function MyProfile({ user, setUser }) {
               }}>
                 <p style={{ fontSize: '1.1rem' }}>
                   No patients yet. They will appear here when they accept your chat requests.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* My Sessions Tab (Doctor) */}
+        {activeTab === 'my-sessions' && user.is_doctor && (
+          <div>
+            <h2 style={{ marginBottom: '1.5rem' }}>My Sessions</h2>
+            
+            {sessions.length > 0 ? (
+              sessions.map(session => {
+                const API_BASE = process.env.REACT_APP_API_URL 
+                  ? process.env.REACT_APP_API_URL.replace('/api', '') 
+                  : 'http://127.0.0.1:5050';
+                const patientPicture = session.user?.profile_picture
+                  ? `${API_BASE}/${session.user.profile_picture}`
+                  : null;
+                
+                const statusColors = {
+                  pending: '#f39c12',
+                  confirmed: '#4CAF50',
+                  completed: '#3498db',
+                  cancelled: '#e74c3c'
+                };
+                
+                const appointmentDate = new Date(session.appointment_date);
+                const isUpcoming = appointmentDate > new Date();
+                
+                return (
+                  <div 
+                    key={session.id} 
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.25)',
+                      backdropFilter: 'blur(12px)',
+                      WebkitBackdropFilter: 'blur(12px)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      padding: '1.5rem',
+                      borderRadius: '15px',
+                      marginBottom: '1rem',
+                      boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
+                      <div style={{
+                        width: '60px',
+                        height: '60px',
+                        borderRadius: '50%',
+                        overflow: 'hidden',
+                        border: '3px solid #7F7FD5',
+                        background: '#f0f0f0',
+                        flexShrink: 0
+                      }}>
+                        {patientPicture ? (
+                          <img 
+                            src={patientPicture}
+                            alt={session.user?.username}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover'
+                            }}
+                          />
+                        ) : (
+                          <div style={{
+                            width: '100%',
+                            height: '100%',
+                            background: 'linear-gradient(135deg, #7F7FD5, #86A8E7)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontSize: '1.5rem',
+                            fontWeight: 'bold'
+                          }}>
+                            {session.user?.username?.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                          <div>
+                            <h3 style={{ color: '#1f2937', marginBottom: '0.3rem' }}>
+                              {session.user?.full_name || session.user?.username}
+                            </h3>
+                            <p style={{ color: '#1f2937', fontSize: '0.9rem', marginBottom: '0.3rem' }}>
+                              📧 {session.user?.email}
+                            </p>
+                          </div>
+                          <span style={{
+                            padding: '0.4rem 1rem',
+                            borderRadius: '20px',
+                            fontSize: '0.85rem',
+                            fontWeight: '600',
+                            background: statusColors[session.status] || '#999',
+                            color: 'white'
+                          }}>
+                            {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
+                          </span>
+                        </div>
+                        
+                        <div style={{ 
+                          background: 'rgba(255, 255, 255, 0.3)',
+                          padding: '0.8rem',
+                          borderRadius: '10px',
+                          marginBottom: '0.8rem'
+                        }}>
+                          <p style={{ color: '#1f2937', fontSize: '0.95rem', marginBottom: '0.3rem' }}>
+                            📅 {appointmentDate.toLocaleDateString('en-US', { 
+                              weekday: 'long', 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                          </p>
+                          <p style={{ color: '#1f2937', fontSize: '0.95rem' }}>
+                            🕐 {appointmentDate.toLocaleTimeString('en-US', { 
+                              hour: '2-digit', 
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                        
+                        {session.notes && (
+                          <p style={{ color: '#1f2937', fontSize: '0.9rem', fontStyle: 'italic', marginBottom: '0.8rem' }}>
+                            Note: {session.notes}
+                          </p>
+                        )}
+                        
+                        <div style={{ display: 'flex', gap: '0.8rem' }}>
+                          {session.status === 'pending' && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await confirmBooking(session.id);
+                                  loadData();
+                                } catch (error) {
+                                  alert('Failed to confirm session');
+                                }
+                              }}
+                              style={{
+                                background: '#4CAF50',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.6rem 1.2rem',
+                                borderRadius: '10px',
+                                fontSize: '0.9rem',
+                                cursor: 'pointer',
+                                fontWeight: '600'
+                              }}
+                            >
+                              ✓ Confirm
+                            </button>
+                          )}
+                          
+                          {(session.status === 'confirmed' || session.status === 'pending') && isUpcoming && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await completeBooking(session.id);
+                                  loadData();
+                                } catch (error) {
+                                  alert('Failed to mark as completed');
+                                }
+                              }}
+                              style={{
+                                background: '#3498db',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.6rem 1.2rem',
+                                borderRadius: '10px',
+                                fontSize: '0.9rem',
+                                cursor: 'pointer',
+                                fontWeight: '600'
+                              }}
+                            >
+                              ✓ Mark Complete
+                            </button>
+                          )}
+                          
+                          {session.status === 'pending' && (
+                            <button
+                              onClick={async () => {
+                                if (window.confirm('Are you sure you want to cancel this session?')) {
+                                  try {
+                                    await cancelBooking(session.id);
+                                    loadData();
+                                  } catch (error) {
+                                    alert('Failed to cancel session');
+                                  }
+                                }
+                              }}
+                              style={{
+                                background: '#e74c3c',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.6rem 1.2rem',
+                                borderRadius: '10px',
+                                fontSize: '0.9rem',
+                                cursor: 'pointer',
+                                fontWeight: '600'
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '3rem', 
+                color: '#1f2937',
+                background: 'rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '15px',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
+              }}>
+                <p style={{ fontSize: '1.1rem' }}>
+                  No sessions booked yet. Patients will appear here when they book sessions with you.
                 </p>
               </div>
             )}
@@ -1308,6 +1579,192 @@ function MyProfile({ user, setUser }) {
               <p style={{ textAlign: 'center', color: '#999', padding: '2rem' }}>
                 No journals yet. Start writing!
               </p>
+            )}
+          </div>
+        )}
+
+        {/* My Bookings Tab (Patients) */}
+        {activeTab === 'my-bookings' && !user.is_doctor && (
+          <div>
+            <h2 style={{ marginBottom: '1.5rem' }}>My Sessions</h2>
+            
+            {bookings.length > 0 ? (
+              bookings.map(booking => {
+                const API_BASE = process.env.REACT_APP_API_URL 
+                  ? process.env.REACT_APP_API_URL.replace('/api', '') 
+                  : 'http://127.0.0.1:5050';
+                const doctorPicture = booking.doctor?.user?.profile_picture
+                  ? `${API_BASE}/${booking.doctor.user.profile_picture}`
+                  : null;
+                
+                const statusColors = {
+                  pending: '#f39c12',
+                  confirmed: '#4CAF50',
+                  completed: '#3498db',
+                  cancelled: '#e74c3c'
+                };
+                
+                const appointmentDate = new Date(booking.appointment_date);
+                const isUpcoming = appointmentDate > new Date();
+                
+                return (
+                  <div 
+                    key={booking.id} 
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.25)',
+                      backdropFilter: 'blur(12px)',
+                      WebkitBackdropFilter: 'blur(12px)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      padding: '1.5rem',
+                      borderRadius: '15px',
+                      marginBottom: '1rem',
+                      boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
+                      <div style={{
+                        width: '60px',
+                        height: '60px',
+                        borderRadius: '50%',
+                        overflow: 'hidden',
+                        border: '3px solid #7F7FD5',
+                        background: '#f0f0f0',
+                        flexShrink: 0
+                      }}>
+                        {doctorPicture ? (
+                          <img 
+                            src={doctorPicture}
+                            alt={booking.doctor?.user?.username}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover'
+                            }}
+                          />
+                        ) : (
+                          <div style={{
+                            width: '100%',
+                            height: '100%',
+                            background: 'linear-gradient(135deg, #7F7FD5, #86A8E7)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontSize: '1.5rem',
+                            fontWeight: 'bold'
+                          }}>
+                            {booking.doctor?.user?.username?.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                          <div>
+                            <h3 style={{ color: '#1f2937', marginBottom: '0.3rem' }}>
+                              Dr. {booking.doctor?.user?.full_name || booking.doctor?.user?.username}
+                            </h3>
+                            <p style={{ color: '#1f2937', fontSize: '0.9rem', marginBottom: '0.3rem' }}>
+                              🏥 {booking.doctor?.specialization || 'General Practice'}
+                            </p>
+                            {booking.doctor?.location && (
+                              <p style={{ color: '#1f2937', fontSize: '0.9rem' }}>
+                                📍 {booking.doctor.location}
+                              </p>
+                            )}
+                          </div>
+                          <span style={{
+                            padding: '0.4rem 1rem',
+                            borderRadius: '20px',
+                            fontSize: '0.85rem',
+                            fontWeight: '600',
+                            background: statusColors[booking.status] || '#999',
+                            color: 'white'
+                          }}>
+                            {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                          </span>
+                        </div>
+                        
+                        <div style={{ 
+                          background: 'rgba(255, 255, 255, 0.3)',
+                          padding: '0.8rem',
+                          borderRadius: '10px',
+                          marginBottom: '0.8rem'
+                        }}>
+                          <p style={{ color: '#1f2937', fontSize: '0.95rem', marginBottom: '0.3rem' }}>
+                            📅 {appointmentDate.toLocaleDateString('en-US', { 
+                              weekday: 'long', 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                          </p>
+                          <p style={{ color: '#1f2937', fontSize: '0.95rem' }}>
+                            🕐 {appointmentDate.toLocaleTimeString('en-US', { 
+                              hour: '2-digit', 
+                              minute: '2-digit'
+                            })}
+                          </p>
+                          {booking.doctor?.session_charge && (
+                            <p style={{ color: '#1f2937', fontSize: '0.95rem', marginTop: '0.3rem' }}>
+                              💵 ${booking.doctor.session_charge}
+                            </p>
+                          )}
+                        </div>
+                        
+                        {booking.notes && (
+                          <p style={{ color: '#1f2937', fontSize: '0.9rem', fontStyle: 'italic', marginBottom: '0.8rem' }}>
+                            Note: {booking.notes}
+                          </p>
+                        )}
+                        
+                        {isUpcoming && booking.status === 'pending' && (
+                          <button
+                            onClick={async () => {
+                              if (window.confirm('Are you sure you want to cancel this booking?')) {
+                                try {
+                                  await cancelBooking(booking.id);
+                                  loadData();
+                                } catch (error) {
+                                  alert('Failed to cancel booking');
+                                }
+                              }
+                            }}
+                            style={{
+                              background: '#e74c3c',
+                              color: 'white',
+                              border: 'none',
+                              padding: '0.6rem 1.2rem',
+                              borderRadius: '10px',
+                              fontSize: '0.9rem',
+                              cursor: 'pointer',
+                              fontWeight: '600'
+                            }}
+                          >
+                            Cancel Booking
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '3rem', 
+                color: '#1f2937',
+                background: 'rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '15px',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
+              }}>
+                <p style={{ fontSize: '1.1rem' }}>
+                  No bookings yet. Visit the Clinics page to book a session with a doctor!
+                </p>
+              </div>
             )}
           </div>
         )}
