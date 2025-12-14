@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getArticles, getTopArticles } from '../services/api';
 import ArticleTile from '../components/ArticleTile';
 import Chatbot from '../components/Chatbot';
 
 function Articles({ user }) {
+  const navigate = useNavigate();
   const [articles, setArticles] = useState([]);
   const [topArticles, setTopArticles] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -59,14 +61,44 @@ function Articles({ user }) {
 
       {topArticles.length > 0 && (
         <div className="slideshow-container">
-          {topArticles.map((article, index) => (
-            <div key={article.id} className={`slide ${index === currentSlide ? 'active' : ''}`}>
-              <h2>⭐ Featured Article</h2>
-              <h3>{article.title}</h3>
-              <p>{article.content?.substring(0, 200)}...</p>
-              <div>👍 {article.like_count} likes • 💬 {article.comment_count} comments</div>
-            </div>
-          ))}
+          {topArticles.map((article, index) => {
+            const API_BASE = process.env.REACT_APP_API_URL 
+              ? process.env.REACT_APP_API_URL.replace('/api', '') 
+              : 'http://127.0.0.1:5050';
+            const coverImageUrl = article.cover_image 
+              ? `${API_BASE}${article.cover_image}` 
+              : 'https://via.placeholder.com/150x150?text=Article';
+            
+            return (
+              <div 
+                key={article.id} 
+                className={`slide ${index === currentSlide ? 'active' : ''}`}
+                onClick={() => navigate(`/articles/${article.id}`)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
+                  <img 
+                    src={coverImageUrl} 
+                    alt={article.title}
+                    style={{
+                      width: '250px',
+                      height: '200px',
+                      borderRadius: '12px',
+                      objectFit: 'cover',
+                      flexShrink: 0,
+                      border: '2px solid rgba(255, 255, 255, 0.3)'
+                    }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <h2>⭐ Featured Article</h2>
+                    <h3>{article.title}</h3>
+                    <p>{article.content?.substring(0, 200)}...</p>
+                    <div>👍 {article.like_count} likes • 💬 {article.comment_count} comments</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
       

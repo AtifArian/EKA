@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getJournals, getTopJournals } from '../services/api';
 import JournalTile from '../components/JournalTile';
 import Chatbot from '../components/Chatbot';
 
 function Journals({ user }) {
+  const navigate = useNavigate();
   const [journals, setJournals] = useState([]);
   const [topJournals, setTopJournals] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -47,7 +49,12 @@ function Journals({ user }) {
       {topJournals.length > 0 && (
         <div className="slideshow-container">
           {topJournals.map((journal, index) => (
-            <div key={journal.id} className={`slide ${index === currentSlide ? 'active' : ''}`}>
+            <div 
+              key={journal.id} 
+              className={`slide ${index === currentSlide ? 'active' : ''}`}
+              onClick={() => navigate(`/journals/${journal.id}`)}
+              style={{ cursor: 'pointer' }}
+            >
               <h2>⭐ Featured Journal</h2>
               <h3>{journal.title}</h3>
               <p>{journal.content.substring(0, 200)}...</p>
