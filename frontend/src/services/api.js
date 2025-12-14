@@ -124,6 +124,9 @@ export const cancelBooking = (bookingId) => api.put(`/bookings/${bookingId}/canc
 export const completeBooking = (bookingId) => api.put(`/bookings/${bookingId}/complete`).then(res => res.data);
 export const confirmBooking = (bookingId) => api.put(`/bookings/${bookingId}/confirm`).then(res => res.data);
 
+// Doctor APIs
+export const getHighRiskPatients = () => api.get('/doctors/high-risk-patients').then(res => res.data);
+
 // Donation APIs - no authentication required
 export const createDonation = (data) => {
   return axios.post(`${API_URL}/donations`, data, {

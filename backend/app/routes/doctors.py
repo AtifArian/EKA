@@ -259,3 +259,30 @@ def update_chat_request(request_id):
         'message': f'Chat request {status}',
         'chat_request': chat_request.to_dict()
     }), 200
+
+@doctors_bp.route('/high-risk-patients', methods=['GET'])
+@jwt_required()
+@doctor_required
+def get_high_risk_patients():
+    """Get patients with risk score >= 85%"""
+    current_user_id = int(get_jwt_identity())
+    doctor = Doctor.query.filter_by(user_id=current_user_id).first()
+    
+    if not doctor:
+        return jsonify({'error': 'Doctor profile not found'}), 404
+    
+    high_risk_patients = []
+    
+    for patient in doctor.patients:
+        risk_score = predict_suicide_risk(patient.id)
+        if risk_score >= 85:
+            high_risk_patients.append({
+                'id': patient.id,
+                'username': patient.username,
+                'full_name': patient.full_name,
+                'email': patient.email,
+                'profile_picture': patient.profile_picture,
+                'risk_score': round(risk_score, 1)
+            })
+    
+    return jsonify(high_risk_patients), 200

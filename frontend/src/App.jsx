@@ -7,6 +7,7 @@ import './App.css';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import MoodTracker from './components/MoodTracker';
+import HighRiskAlert from './components/HighRiskAlert';
 
 // Import pages
 import Home from './pages/Home';
@@ -25,6 +26,7 @@ import Chat from './pages/Chat';
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [navigateToInbox, setNavigateToInbox] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -60,6 +62,7 @@ function App() {
           <Navbar user={user} onLogout={handleLogout} />
           
           {user && !user.is_doctor && <MoodTracker />}
+          {user && user.is_doctor && <HighRiskAlert user={user} onChatNow={(patient) => setNavigateToInbox(patient)} />}
           
           <Routes>
             <Route path="/" element={<Home user={user} />} />
@@ -77,7 +80,7 @@ function App() {
               path="/profile" 
               element={
                 <ProtectedRoute user={user}>
-                  <MyProfile user={user} setUser={setUser} />
+                  <MyProfile user={user} setUser={setUser} navigateToInbox={navigateToInbox} setNavigateToInbox={setNavigateToInbox} />
                 </ProtectedRoute>
               } 
             />

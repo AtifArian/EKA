@@ -39,7 +39,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import MapLocationPicker from '../components/MapLocationPicker';
 
-function MyProfile({ user, setUser }) {
+function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(user?.is_doctor ? 'clinic-profile' : 'journals');
   const [friends, setFriends] = useState([]);
@@ -161,6 +161,17 @@ function MyProfile({ user, setUser }) {
     }
     loadData();
   }, [user, activeTab, loadData, navigate]);
+
+  // Handle navigation from high-risk alert
+  useEffect(() => {
+    if (navigateToInbox && user?.is_doctor) {
+      setActiveTab('inbox');
+      // Optionally, you can also select/open a thread with this patient
+      if (setNavigateToInbox) {
+        setNavigateToInbox(null);
+      }
+    }
+  }, [navigateToInbox, user, setNavigateToInbox]);
 
   // Poll notification counts periodically
   useEffect(() => {
