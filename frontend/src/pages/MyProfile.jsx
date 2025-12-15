@@ -19,7 +19,12 @@ import {
   getMyArticles,
   deleteArticle,
   uploadProfilePicture,
-  deleteProfilePicture
+  deleteProfilePicture,
+  getMyBookings,
+  getMySessions,
+  cancelBooking,
+  completeBooking,
+  confirmBooking
 } from '../services/api';
 import {
   listThreads,
@@ -34,7 +39,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import MapLocationPicker from '../components/MapLocationPicker';
 
-function MyProfile({ user, setUser }) {
+function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(user?.is_doctor ? 'clinic-profile' : 'journals');
   const [friends, setFriends] = useState([]);
@@ -47,6 +52,9 @@ function MyProfile({ user, setUser }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showJournalForm, setShowJournalForm] = useState(false);
+  const [editingJournalId, setEditingJournalId] = useState(null);
+  const [bookings, setBookings] = useState([]);
+  const [sessions, setSessions] = useState([]);
   
   const [journalForm, setJournalForm] = useState({
     title: '',
@@ -58,7 +66,8 @@ function MyProfile({ user, setUser }) {
     title: '',
     content: '',
     mood_category: 'neutral',
-    keywords: ''
+    keywords: '',
+    cover_image: null
   });
 
   const [clinicForm, setClinicForm] = useState({
@@ -134,6 +143,12 @@ function MyProfile({ user, setUser }) {
         // reset thread view when switching into inbox
         setSelectedThreadId(null);
         setThreadMessages([]);
+      } else if (activeTab === 'my-bookings' && !user.is_doctor) {
+        const data = await getMyBookings();
+        setBookings(data);
+      } else if (activeTab === 'my-sessions' && user.is_doctor) {
+        const data = await getMySessions();
+        setSessions(data);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -147,6 +162,17 @@ function MyProfile({ user, setUser }) {
     }
     loadData();
   }, [user, activeTab, loadData, navigate]);
+
+  // Handle navigation from high-risk alert
+  useEffect(() => {
+    if (navigateToInbox && user?.is_doctor) {
+      setActiveTab('inbox');
+      // Optionally, you can also select/open a thread with this patient
+      if (setNavigateToInbox) {
+        setNavigateToInbox(null);
+      }
+    }
+  }, [navigateToInbox, user, setNavigateToInbox]);
 
   // Poll notification counts periodically
   useEffect(() => {
@@ -311,25 +337,46 @@ function MyProfile({ user, setUser }) {
   const handleCreateJournal = async (e) => {
     e.preventDefault();
     try {
-      await createJournal(journalForm);
-      alert('Journal created successfully!');
+      if (editingJournalId) {
+        // Update existing journal
+        await updateJournal(editingJournalId, journalForm);
+        alert('Journal updated successfully!');
+        setEditingJournalId(null);
+      } else {
+        // Create new journal
+        await createJournal(journalForm);
+        alert('Journal created successfully!');
+      }
       setShowJournalForm(false);
       setJournalForm({ title: '', content: '', is_public: false });
       loadData();
     } catch (error) {
-      alert('Failed to create journal');
+      alert(editingJournalId ? 'Failed to update journal' : 'Failed to create journal');
     }
   };
 
   const handleCreateArticle = async (e) => {
     e.preventDefault();
+    
+    if (!articleForm.cover_image) {
+      alert('Cover image is required');
+      return;
+    }
+    
     try {
-      await createArticle(articleForm);
+      const formData = new FormData();
+      formData.append('title', articleForm.title);
+      formData.append('content', articleForm.content);
+      formData.append('mood_category', articleForm.mood_category);
+      formData.append('keywords', articleForm.keywords);
+      formData.append('cover_image', articleForm.cover_image);
+      
+      await createArticle(formData);
       alert('Article published successfully!');
-      setArticleForm({ title: '', content: '', mood_category: 'neutral', keywords: '' });
-      navigate('/articles');
+      setArticleForm({ title: '', content: '', mood_category: 'neutral', keywords: '', cover_image: null });
+      loadData();
     } catch (error) {
-      alert('Failed to publish article');
+      alert(error.response?.data?.error || 'Failed to publish article');
     }
   };
 
@@ -350,6 +397,22 @@ function MyProfile({ user, setUser }) {
     } catch (error) {
       alert('Failed to delete journal');
     }
+  };
+
+  const handleEditJournal = (journal) => {
+    setEditingJournalId(journal.id);
+    setJournalForm({
+      title: journal.title,
+      content: journal.content,
+      is_public: journal.is_public
+    });
+    setShowJournalForm(true);
+  };
+
+  const handleCancelJournalEdit = () => {
+    setEditingJournalId(null);
+    setJournalForm({ title: '', content: '', is_public: false });
+    setShowJournalForm(false);
   };
 
   const handleDeleteArticle = async (articleId) => {
@@ -440,10 +503,13 @@ function MyProfile({ user, setUser }) {
   return (
     <div className="container">
       <div style={{
-        background: 'white',
+        background: 'rgba(255, 255, 255, 0.25)',
+        backdropFilter: 'blur(6px)',
+        WebkitbackdropFilter: 'blur(6px)',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
         borderRadius: '25px',
         padding: '3rem',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
       }}>
         {/* Profile Header with Picture */}
         <div style={{ 
@@ -521,10 +587,10 @@ function MyProfile({ user, setUser }) {
           </div>
           
           <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#7F7FD5', marginBottom: '0.5rem' }}>
+            <h1 style={{ color: '#1f2937', marginBottom: '0.5rem' }}>
               {user.full_name || user.username}
             </h1>
-            <p style={{ color: '#666', fontSize: '1.1rem', marginBottom: '1rem' }}>
+            <p style={{ color: '#1f2937', fontSize: '1.1rem', marginBottom: '1rem' }}>
               {user.is_doctor ? '👨‍⚕️ Doctor' : '👤 User'} • {user.email}
             </p>
             
@@ -579,7 +645,7 @@ function MyProfile({ user, setUser }) {
                   padding: '1rem 1.5rem',
                   fontSize: '1.05rem',
                   fontWeight: '600',
-                  color: activeTab === 'inbox' ? '#7F7FD5' : '#999',
+                  color: activeTab === 'inbox' ? '#7F7FD5' : '#000',
                   borderBottom: activeTab === 'inbox' ? '3px solid #7F7FD5' : 'none',
                   cursor: 'pointer'
                 }}
@@ -607,12 +673,27 @@ function MyProfile({ user, setUser }) {
                   padding: '1rem 1.5rem',
                   fontSize: '1.05rem',
                   fontWeight: '600',
-                  color: activeTab === 'journals' ? '#7F7FD5' : '#999',
+                  color: activeTab === 'journals' ? '#7F7FD5' : '#000',
                   borderBottom: activeTab === 'journals' ? '3px solid #7F7FD5' : 'none',
                   cursor: 'pointer'
                 }}
               >
                 My Journals
+              </button>
+              <button
+                onClick={() => setActiveTab('my-bookings')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '1rem 1.5rem',
+                  fontSize: '1.05rem',
+                  fontWeight: '600',
+                  color: activeTab === 'my-bookings' ? '#7F7FD5' : '#000',
+                  borderBottom: activeTab === 'my-bookings' ? '3px solid #7F7FD5' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                📅 My Sessions
               </button>
               <button
                 onClick={() => setActiveTab('friends')}
@@ -622,7 +703,7 @@ function MyProfile({ user, setUser }) {
                   padding: '1rem 1.5rem',
                   fontSize: '1.05rem',
                   fontWeight: '600',
-                  color: activeTab === 'friends' ? '#7F7FD5' : '#999',
+                  color: activeTab === 'friends' ? '#7F7FD5' : '#000',
                   borderBottom: activeTab === 'friends' ? '3px solid #7F7FD5' : 'none',
                   cursor: 'pointer'
                 }}
@@ -642,7 +723,7 @@ function MyProfile({ user, setUser }) {
                   padding: '1rem 1.5rem',
                   fontSize: '1.05rem',
                   fontWeight: '600',
-                  color: activeTab === 'clinic-profile' ? '#7F7FD5' : '#999',
+                  color: activeTab === 'clinic-profile' ? '#7F7FD5' : '#000',
                   borderBottom: activeTab === 'clinic-profile' ? '3px solid #7F7FD5' : 'none',
                   cursor: 'pointer'
                 }}
@@ -657,7 +738,7 @@ function MyProfile({ user, setUser }) {
                   padding: '1rem 1.5rem',
                   fontSize: '1.05rem',
                   fontWeight: '600',
-                  color: activeTab === 'friends' ? '#7F7FD5' : '#999',
+                  color: activeTab === 'friends' ? '#7F7FD5' : '#000',
                   borderBottom: activeTab === 'friends' ? '3px solid #7F7FD5' : 'none',
                   cursor: 'pointer'
                 }}
@@ -672,7 +753,7 @@ function MyProfile({ user, setUser }) {
                   padding: '1rem 1.5rem',
                   fontSize: '1.05rem',
                   fontWeight: '600',
-                  color: activeTab === 'patients' ? '#7F7FD5' : '#999',
+                  color: activeTab === 'patients' ? '#7F7FD5' : '#000',
                   borderBottom: activeTab === 'patients' ? '3px solid #7F7FD5' : 'none',
                   cursor: 'pointer'
                 }}
@@ -687,7 +768,7 @@ function MyProfile({ user, setUser }) {
                   padding: '1rem 1.5rem',
                   fontSize: '1.05rem',
                   fontWeight: '600',
-                  color: activeTab === 'chat-requests' ? '#7F7FD5' : '#999',
+                  color: activeTab === 'chat-requests' ? '#7F7FD5' : '#000',
                   borderBottom: activeTab === 'chat-requests' ? '3px solid #7F7FD5' : 'none',
                   cursor: 'pointer'
                 }}
@@ -704,6 +785,21 @@ function MyProfile({ user, setUser }) {
                 )}
               </button>
               <button
+                onClick={() => setActiveTab('my-sessions')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '1rem 1.5rem',
+                  fontSize: '1.05rem',
+                  fontWeight: '600',
+                  color: activeTab === 'my-sessions' ? '#7F7FD5' : '#000',
+                  borderBottom: activeTab === 'my-sessions' ? '3px solid #7F7FD5' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                📅 My Sessions
+              </button>
+              <button
                 onClick={() => setActiveTab('my-articles')}
                 style={{
                   background: 'none',
@@ -711,7 +807,7 @@ function MyProfile({ user, setUser }) {
                   padding: '1rem 1.5rem',
                   fontSize: '1.05rem',
                   fontWeight: '600',
-                  color: activeTab === 'my-articles' ? '#7F7FD5' : '#999',
+                  color: activeTab === 'my-articles' ? '#7F7FD5' : '#000',
                   borderBottom: activeTab === 'my-articles' ? '3px solid #7F7FD5' : 'none',
                   cursor: 'pointer'
                 }}
@@ -726,7 +822,7 @@ function MyProfile({ user, setUser }) {
                   padding: '1rem 1.5rem',
                   fontSize: '1.05rem',
                   fontWeight: '600',
-                  color: activeTab === 'publish-article' ? '#7F7FD5' : '#999',
+                  color: activeTab === 'publish-article' ? '#7F7FD5' : '#000',
                   borderBottom: activeTab === 'publish-article' ? '3px solid #7F7FD5' : 'none',
                   cursor: 'pointer'
                 }}
@@ -864,11 +960,15 @@ function MyProfile({ user, setUser }) {
               <div style={{ 
                 marginTop: '2rem', 
                 padding: '1.5rem', 
-                background: '#e8f5e9', 
-                borderRadius: '15px' 
+                background: 'rgba(46, 125, 50, 0.15)',
+                backdropFilter: 'blur(6px)',
+                WebkitbackdropFilter: 'blur(6px)',
+                border: '1px solid rgba(46, 125, 50, 0.3)',
+                borderRadius: '15px',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
               }}>
-                <h3 style={{ color: '#2e7d32', marginBottom: '0.5rem' }}>✅ Profile Complete!</h3>
-                <p style={{ color: '#666' }}>
+                <h3 style={{ color: '#1f2937', marginBottom: '0.5rem', fontWeight: 'bold' }}>✅ Profile Complete!</h3>
+                <p style={{ color: '#1f2937' }}>
                   Your clinic is now visible on the Clinics page. Patients can find you and book sessions!
                 </p>
               </div>
@@ -886,10 +986,14 @@ function MyProfile({ user, setUser }) {
                 <div 
                   key={patient.id} 
                   style={{
-                    background: '#f8f9fa',
+                    background: 'rgba(255, 255, 255, 0.25)',
+                    backdropFilter: 'blur(6px)',
+                    WebkitbackdropFilter: 'blur(6px)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
                     padding: '1.5rem',
                     borderRadius: '15px',
                     marginBottom: '1rem',
+                    boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
                     transition: 'transform 0.2s'
                   }}
                 >
@@ -899,15 +1003,15 @@ function MyProfile({ user, setUser }) {
                     alignItems: 'center'
                   }}>
                     <div>
-                      <h3 style={{ color: '#333' }}>{patient.username}</h3>
-                      <p style={{ color: '#666', fontSize: '0.95rem' }}>{patient.email}</p>
+                      <h3 style={{ color: '#1f2937' }}>{patient.username}</h3>
+                      <p style={{ color: '#1f2937', fontSize: '0.95rem' }}>{patient.email}</p>
                     </div>
                     <div style={{
                       padding: '0.8rem 1.5rem',
                       borderRadius: '10px',
                       fontWeight: '600',
                       fontSize: '1.1rem',
-                      background: patient.suicide_risk_score > 70 ? '#e74c3c' : 
+                      background: patient.suicide_risk_score > 85 ? '#7a0707ff' :patient.suicide_risk_score > 70 ? '#e74c3c' : 
                                  patient.suicide_risk_score > 40 ? '#f39c12' : '#4CAF50',
                       color: 'white'
                     }}>
@@ -932,6 +1036,234 @@ function MyProfile({ user, setUser }) {
           </div>
         )}
 
+        {/* My Sessions Tab (Doctor) */}
+        {activeTab === 'my-sessions' && user.is_doctor && (
+          <div>
+            <h2 style={{ marginBottom: '1.5rem' }}>My Sessions</h2>
+            
+            {sessions.length > 0 ? (
+              sessions.map(session => {
+                const API_BASE = process.env.REACT_APP_API_URL 
+                  ? process.env.REACT_APP_API_URL.replace('/api', '') 
+                  : 'http://127.0.0.1:5050';
+                const patientPicture = session.user?.profile_picture
+                  ? `${API_BASE}/${session.user.profile_picture}`
+                  : null;
+                
+                const statusColors = {
+                  pending: '#f39c12',
+                  confirmed: '#4CAF50',
+                  completed: '#3498db',
+                  cancelled: '#e74c3c'
+                };
+                
+                const appointmentDate = new Date(session.appointment_date);
+                const isUpcoming = appointmentDate > new Date();
+                
+                return (
+                  <div 
+                    key={session.id} 
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.25)',
+                      backdropFilter: 'blur(6px)',
+                      WebkitbackdropFilter: 'blur(6px)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      padding: '1.5rem',
+                      borderRadius: '15px',
+                      marginBottom: '1rem',
+                      boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
+                      <div style={{
+                        width: '60px',
+                        height: '60px',
+                        borderRadius: '50%',
+                        overflow: 'hidden',
+                        border: '3px solid #7F7FD5',
+                        background: '#f0f0f0',
+                        flexShrink: 0
+                      }}>
+                        {patientPicture ? (
+                          <img 
+                            src={patientPicture}
+                            alt={session.user?.username}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover'
+                            }}
+                          />
+                        ) : (
+                          <div style={{
+                            width: '100%',
+                            height: '100%',
+                            background: 'linear-gradient(135deg, #7F7FD5, #86A8E7)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontSize: '1.5rem',
+                            fontWeight: 'bold'
+                          }}>
+                            {session.user?.username?.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                          <div>
+                            <h3 style={{ color: '#1f2937', marginBottom: '0.3rem' }}>
+                              {session.user?.full_name || session.user?.username}
+                            </h3>
+                            <p style={{ color: '#1f2937', fontSize: '0.9rem', marginBottom: '0.3rem' }}>
+                              📧 {session.user?.email}
+                            </p>
+                          </div>
+                          <span style={{
+                            padding: '0.4rem 1rem',
+                            borderRadius: '20px',
+                            fontSize: '0.85rem',
+                            fontWeight: '600',
+                            background: statusColors[session.status] || '#999',
+                            color: 'white'
+                          }}>
+                            {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
+                          </span>
+                        </div>
+                        
+                        <div style={{ 
+                          background: 'rgba(255, 255, 255, 0.3)',
+                          padding: '0.8rem',
+                          borderRadius: '10px',
+                          marginBottom: '0.8rem'
+                        }}>
+                          <p style={{ color: '#1f2937', fontSize: '0.95rem', marginBottom: '0.3rem' }}>
+                            📅 {appointmentDate.toLocaleDateString('en-US', { 
+                              weekday: 'long', 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                          </p>
+                          <p style={{ color: '#1f2937', fontSize: '0.95rem' }}>
+                            🕐 {appointmentDate.toLocaleTimeString('en-US', { 
+                              hour: '2-digit', 
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                        
+                        {session.notes && (
+                          <p style={{ color: '#1f2937', fontSize: '0.9rem', fontStyle: 'italic', marginBottom: '0.8rem' }}>
+                            Note: {session.notes}
+                          </p>
+                        )}
+                        
+                        <div style={{ display: 'flex', gap: '0.8rem' }}>
+                          {session.status === 'pending' && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await confirmBooking(session.id);
+                                  loadData();
+                                } catch (error) {
+                                  alert('Failed to confirm session');
+                                }
+                              }}
+                              style={{
+                                background: '#4CAF50',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.6rem 1.2rem',
+                                borderRadius: '10px',
+                                fontSize: '0.9rem',
+                                cursor: 'pointer',
+                                fontWeight: '600'
+                              }}
+                            >
+                              ✓ Confirm
+                            </button>
+                          )}
+                          
+                          {(session.status === 'confirmed' || session.status === 'pending') && isUpcoming && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await completeBooking(session.id);
+                                  loadData();
+                                } catch (error) {
+                                  alert('Failed to mark as completed');
+                                }
+                              }}
+                              style={{
+                                background: '#3498db',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.6rem 1.2rem',
+                                borderRadius: '10px',
+                                fontSize: '0.9rem',
+                                cursor: 'pointer',
+                                fontWeight: '600'
+                              }}
+                            >
+                              ✓ Mark Complete
+                            </button>
+                          )}
+                          
+                          {session.status === 'pending' && (
+                            <button
+                              onClick={async () => {
+                                if (window.confirm('Are you sure you want to cancel this session?')) {
+                                  try {
+                                    await cancelBooking(session.id);
+                                    loadData();
+                                  } catch (error) {
+                                    alert('Failed to cancel session');
+                                  }
+                                }
+                              }}
+                              style={{
+                                background: '#e74c3c',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.6rem 1.2rem',
+                                borderRadius: '10px',
+                                fontSize: '0.9rem',
+                                cursor: 'pointer',
+                                fontWeight: '600'
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '3rem', 
+                color: '#1f2937',
+                background: 'rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(6px)',
+                WebkitbackdropFilter: 'blur(6px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '15px',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
+              }}>
+                <p style={{ fontSize: '1.1rem' }}>
+                  No sessions booked yet. Patients will appear here when they book sessions with you.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Chat Requests Tab (Doctor) */}
         {activeTab === 'chat-requests' && user.is_doctor && (
           <div>
@@ -940,15 +1272,19 @@ function MyProfile({ user, setUser }) {
             {chatRequests.filter(r => r.status === 'pending').length > 0 ? (
               chatRequests.filter(r => r.status === 'pending').map(request => (
                 <div key={request.id} style={{
-                  background: '#f8f9fa',
+                  background: 'rgba(255, 255, 255, 0.25)',
+                  backdropFilter: 'blur(6px)',
+                  WebkitbackdropFilter: 'blur(6px)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
                   padding: '1.5rem',
                   borderRadius: '15px',
-                  marginBottom: '1rem'
+                  marginBottom: '1rem',
+                  boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
                 }}>
-                  <h3 style={{ color: '#333', marginBottom: '0.5rem' }}>
+                  <h3 style={{ color: '#1f2937', marginBottom: '0.5rem' }}>
                     From: {request.from_user.username}
                   </h3>
-                  <p style={{ color: '#666', marginBottom: '1rem' }}>{request.message}</p>
+                  <p style={{ color: '#1f2937', marginBottom: '1rem' }}>{request.message}</p>
                   <div style={{ display: 'flex', gap: '1rem' }}>
                     <button
                       onClick={() => handleChatRequestAction(request.id, 'approved')}
@@ -985,9 +1321,13 @@ function MyProfile({ user, setUser }) {
               <div style={{ 
                 textAlign: 'center', 
                 padding: '3rem', 
-                color: '#999',
-                background: '#f8f9fa',
-                borderRadius: '15px'
+                color: '#1f2937',
+                background: 'rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(6px)',
+                WebkitbackdropFilter: 'blur(6px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '15px',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
               }}>
                 <p style={{ fontSize: '1.1rem' }}>No pending chat requests</p>
               </div>
@@ -1005,10 +1345,14 @@ function MyProfile({ user, setUser }) {
                 <div 
                   key={article.id} 
                   style={{
-                    background: '#f8f9fa',
+                    background: 'rgba(255, 255, 255, 0.25)',
+                    backdropFilter: 'blur(6px)',
+                    WebkitbackdropFilter: 'blur(6px)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
                     padding: '1.5rem',
                     borderRadius: '15px',
                     marginBottom: '1rem',
+                    boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
                     transition: 'transform 0.2s'
                   }}
                 >
@@ -1021,7 +1365,7 @@ function MyProfile({ user, setUser }) {
                     <div style={{ flex: 1 }}>
                       <h3 
                         style={{ 
-                          color: '#333', 
+                          color: '#1f2937', 
                           marginBottom: '0.5rem',
                           cursor: 'pointer'
                         }}
@@ -1030,7 +1374,7 @@ function MyProfile({ user, setUser }) {
                         {article.title}
                       </h3>
                       <p style={{ 
-                        color: '#666', 
+                        color: '#1f2937', 
                         fontSize: '0.95rem',
                         marginBottom: '0.5rem'
                       }}>
@@ -1038,7 +1382,7 @@ function MyProfile({ user, setUser }) {
                       </p>
                       <div style={{ 
                         fontSize: '0.9rem', 
-                        color: '#999',
+                        color: '#1f2937',
                         marginTop: '0.5rem'
                       }}>
                         👍 {article.like_count} likes • 💬 {article.comment_count} comments
@@ -1094,9 +1438,13 @@ function MyProfile({ user, setUser }) {
               <div style={{ 
                 textAlign: 'center', 
                 padding: '3rem', 
-                color: '#999',
-                background: '#f8f9fa',
-                borderRadius: '15px'
+                color: '#1f2937',
+                background: 'rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(6px)',
+                WebkitbackdropFilter: 'blur(6px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '15px',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
               }}>
                 <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>
                   No articles yet. Start sharing your knowledge!
@@ -1158,6 +1506,28 @@ function MyProfile({ user, setUser }) {
                   placeholder="mental health, anxiety, stress relief"
                 />
               </div>
+              <div className="form-group">
+                <label>Cover Image *</label>
+                <small style={{ display: 'block', color: '#666', marginBottom: '0.5rem', fontSize: '0.85rem' }}>
+                  Recommended: 500×400px | Format: JPEG or WebP | Max size: 150 KB
+                </small>
+                <input
+                  type="file"
+                  accept="image/png, image/jpeg, image/jpg, image/gif, image/webp"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      setArticleForm({...articleForm, cover_image: file});
+                    }
+                  }}
+                  required
+                />
+                {articleForm.cover_image && (
+                  <small style={{ color: '#4CAF50', display: 'block', marginTop: '0.5rem' }}>
+                    ✓ Selected: {articleForm.cover_image.name}
+                  </small>
+                )}
+              </div>
               <button type="submit" className="submit-btn">
                 Publish Article
               </button>
@@ -1186,10 +1556,14 @@ function MyProfile({ user, setUser }) {
 
             {journals.map(journal => (
               <div key={journal.id} style={{
-                background: '#f8f9fa',
+                background: 'rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(6px)',
+                WebkitbackdropFilter: 'blur(6px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
                 padding: '1.5rem',
                 borderRadius: '15px',
-                marginBottom: '1rem'
+                marginBottom: '1rem',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
               }}>
                 <div style={{ 
                   display: 'flex', 
@@ -1197,7 +1571,7 @@ function MyProfile({ user, setUser }) {
                   alignItems: 'start',
                   marginBottom: '0.5rem'
                 }}>
-                  <h3 style={{ color: '#333' }}>{journal.title}</h3>
+                  <h3 style={{ color: '#1f2937' }}>{journal.title}</h3>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button
                       onClick={() => handleTogglePublic(journal)}
@@ -1212,6 +1586,20 @@ function MyProfile({ user, setUser }) {
                       }}
                     >
                       {journal.is_public ? '🌐 Public' : '🔒 Private'}
+                    </button>
+                    <button
+                      onClick={() => handleEditJournal(journal)}
+                      style={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        color: 'white',
+                        border: 'none',
+                        padding: '0.4rem 0.8rem',
+                        borderRadius: '8px',
+                        fontSize: '0.85rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ✏️ Edit
                     </button>
                     <button
                       onClick={() => handleDeleteJournal(journal.id)}
@@ -1229,11 +1617,11 @@ function MyProfile({ user, setUser }) {
                     </button>
                   </div>
                 </div>
-                <p style={{ color: '#666', whiteSpace: 'pre-wrap' }}>{journal.content}</p>
+                <p style={{ color: '#1f2937', whiteSpace: 'pre-wrap' }}>{journal.content}</p>
                 <div style={{ 
                   marginTop: '0.8rem',
                   fontSize: '0.9rem',
-                  color: '#999'
+                  color: '#1f2937'
                 }}>
                   ❤️ {journal.heart_count} hearts • 💬 {journal.comment_count} comments
                 </div>
@@ -1248,30 +1636,222 @@ function MyProfile({ user, setUser }) {
           </div>
         )}
 
+        {/* My Bookings Tab (Patients) */}
+        {activeTab === 'my-bookings' && !user.is_doctor && (
+          <div>
+            <h2 style={{ marginBottom: '1.5rem' }}>My Sessions</h2>
+            
+            {bookings.length > 0 ? (
+              bookings.map(booking => {
+                const API_BASE = process.env.REACT_APP_API_URL 
+                  ? process.env.REACT_APP_API_URL.replace('/api', '') 
+                  : 'http://127.0.0.1:5050';
+                const doctorPicture = booking.doctor?.user?.profile_picture
+                  ? `${API_BASE}/${booking.doctor.user.profile_picture}`
+                  : null;
+                
+                const statusColors = {
+                  pending: '#f39c12',
+                  confirmed: '#4CAF50',
+                  completed: '#3498db',
+                  cancelled: '#e74c3c'
+                };
+                
+                const appointmentDate = new Date(booking.appointment_date);
+                const isUpcoming = appointmentDate > new Date();
+                
+                return (
+                  <div 
+                    key={booking.id} 
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.25)',
+                      backdropFilter: 'blur(6px)',
+                      WebkitbackdropFilter: 'blur(6px)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      padding: '1.5rem',
+                      borderRadius: '15px',
+                      marginBottom: '1rem',
+                      boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
+                      <div style={{
+                        width: '60px',
+                        height: '60px',
+                        borderRadius: '50%',
+                        overflow: 'hidden',
+                        border: '3px solid #7F7FD5',
+                        background: '#f0f0f0',
+                        flexShrink: 0
+                      }}>
+                        {doctorPicture ? (
+                          <img 
+                            src={doctorPicture}
+                            alt={booking.doctor?.user?.username}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover'
+                            }}
+                          />
+                        ) : (
+                          <div style={{
+                            width: '100%',
+                            height: '100%',
+                            background: 'linear-gradient(135deg, #7F7FD5, #86A8E7)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontSize: '1.5rem',
+                            fontWeight: 'bold'
+                          }}>
+                            {booking.doctor?.user?.username?.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                          <div>
+                            <h3 style={{ color: '#1f2937', marginBottom: '0.3rem' }}>
+                              Dr. {booking.doctor?.user?.full_name || booking.doctor?.user?.username}
+                            </h3>
+                            <p style={{ color: '#1f2937', fontSize: '0.9rem', marginBottom: '0.3rem' }}>
+                              🏥 {booking.doctor?.specialization || 'General Practice'}
+                            </p>
+                            {booking.doctor?.location && (
+                              <p style={{ color: '#1f2937', fontSize: '0.9rem' }}>
+                                📍 {booking.doctor.location}
+                              </p>
+                            )}
+                          </div>
+                          <span style={{
+                            padding: '0.4rem 1rem',
+                            borderRadius: '20px',
+                            fontSize: '0.85rem',
+                            fontWeight: '600',
+                            background: statusColors[booking.status] || '#999',
+                            color: 'white'
+                          }}>
+                            {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                          </span>
+                        </div>
+                        
+                        <div style={{ 
+                          background: 'rgba(255, 255, 255, 0.3)',
+                          padding: '0.8rem',
+                          borderRadius: '10px',
+                          marginBottom: '0.8rem'
+                        }}>
+                          <p style={{ color: '#1f2937', fontSize: '0.95rem', marginBottom: '0.3rem' }}>
+                            📅 {appointmentDate.toLocaleDateString('en-US', { 
+                              weekday: 'long', 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                          </p>
+                          <p style={{ color: '#1f2937', fontSize: '0.95rem' }}>
+                            🕐 {appointmentDate.toLocaleTimeString('en-US', { 
+                              hour: '2-digit', 
+                              minute: '2-digit'
+                            })}
+                          </p>
+                          {booking.doctor?.session_charge && (
+                            <p style={{ color: '#1f2937', fontSize: '0.95rem', marginTop: '0.3rem' }}>
+                              💵 ${booking.doctor.session_charge}
+                            </p>
+                          )}
+                        </div>
+                        
+                        {booking.notes && (
+                          <p style={{ color: '#1f2937', fontSize: '0.9rem', fontStyle: 'italic', marginBottom: '0.8rem' }}>
+                            Note: {booking.notes}
+                          </p>
+                        )}
+                        
+                        {isUpcoming && booking.status === 'pending' && (
+                          <button
+                            onClick={async () => {
+                              if (window.confirm('Are you sure you want to cancel this booking?')) {
+                                try {
+                                  await cancelBooking(booking.id);
+                                  loadData();
+                                } catch (error) {
+                                  alert('Failed to cancel booking');
+                                }
+                              }
+                            }}
+                            style={{
+                              background: '#e74c3c',
+                              color: 'white',
+                              border: 'none',
+                              padding: '0.6rem 1.2rem',
+                              borderRadius: '10px',
+                              fontSize: '0.9rem',
+                              cursor: 'pointer',
+                              fontWeight: '600'
+                            }}
+                          >
+                            Cancel Booking
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '3rem', 
+                color: '#1f2937',
+                background: 'rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(6px)',
+                WebkitbackdropFilter: 'blur(6px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '15px',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
+              }}>
+                <p style={{ fontSize: '1.1rem' }}>
+                  No bookings yet. Visit the Clinics page to book a session with a doctor!
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Inbox Tab (Regular Users) */}
         {activeTab === 'inbox' && (
           <div>
             <h2 style={{ marginBottom: '1.5rem' }}>Inbox</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1rem' }}>
               <div style={{
-                background: '#f8f9fa',
+                background: 'rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(6px)',
+                WebkitbackdropFilter: 'blur(6px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
                 padding: '1rem',
                 borderRadius: '12px',
                 maxHeight: '480px',
-                overflowY: 'auto'
+                overflowY: 'auto',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
               }}>
                 {threads.length === 0 && (
-                  <p style={{ color: '#999' }}>No conversations yet.</p>
+                  <p style={{ color: '#1f2937' }}>No conversations yet.</p>
                 )}
                 {threads.map(thread => (
                   <div
                     key={thread.id}
                     style={{
                       padding: '0.8rem',
-                      background: selectedThreadId === thread.id ? 'white' : '#eef2f7',
+                      background: selectedThreadId === thread.id ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.2)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
                       borderRadius: '10px',
                       marginBottom: '0.6rem',
-                      border: '1px solid #e0e0e0',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
                       position: 'relative'
                     }}
                   >
@@ -1284,8 +1864,8 @@ function MyProfile({ user, setUser }) {
                       }}
                       style={{ cursor: 'pointer' }}
                     >
-                      <div style={{ fontWeight: 600, color: '#333' }}>{thread.thread_type === 'user_user' ? 'Friend Chat' : 'Doctor Chat'}</div>
-                      <div style={{ fontSize: '0.85rem', color: '#666' }}>
+                      <div style={{ fontWeight: 600, color: '#1f2937' }}>{thread.thread_type === 'user_user' ? 'Friend Chat' : 'Doctor Chat'}</div>
+                      <div style={{ fontSize: '0.85rem', color: '#1f2937' }}>
                         With: {(() => {
                           const participants = (thread.participants || []);
                           const others = participants.filter(p => p.id !== user.id);
@@ -1293,7 +1873,7 @@ function MyProfile({ user, setUser }) {
                         })()}
                       </div>
                       {thread.last_message && thread.last_message.content && (
-                        <div style={{ fontSize: '0.85rem', color: '#999', marginTop: '0.3rem' }}>
+                        <div style={{ fontSize: '0.85rem', color: '#1f2937', marginTop: '0.3rem' }}>
                           "{thread.last_message.content.length > 80 ? thread.last_message.content.slice(0, 80) + '…' : thread.last_message.content}"
                         </div>
                       )}
@@ -1332,26 +1912,32 @@ function MyProfile({ user, setUser }) {
                 ))}
               </div>
               <div style={{
-                background: '#f8f9fa',
+                background: 'rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(6px)',
+                WebkitbackdropFilter: 'blur(6px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
                 padding: '1rem',
                 borderRadius: '12px',
-                minHeight: '300px'
+                minHeight: '300px',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
               }}>
                 {!selectedThreadId ? (
-                  <p style={{ color: '#999' }}>Select a conversation to view messages.</p>
+                  <p style={{ color: '#1f2937' }}>Select a conversation to view messages.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                     <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1rem' }}>
                       {(Array.isArray(threadMessages) ? threadMessages : []).map(m => (
                         <div key={m.id} style={{
-                          background: m.sender.id === user.id ? '#dbe7ff' : 'white',
+                          background: m.sender.id === user.id ? 'rgba(127, 127, 213, 0.25)' : 'rgba(255, 255, 255, 0.35)',
+                          backdropFilter: 'blur(8px)',
+                          WebkitBackdropFilter: 'blur(8px)',
+                          border: '1px solid rgba(255, 255, 255, 0.3)',
                           padding: '0.8rem',
                           borderRadius: '10px',
-                          marginBottom: '0.6rem',
-                          border: '1px solid #e0e0e0'
+                          marginBottom: '0.6rem'
                         }}>
-                          <div style={{ fontWeight: 600 }}>{m.sender.username}</div>
-                          <div style={{ color: '#333' }}>{m.content}</div>
+                          <div style={{ fontWeight: 600, color: '#1f2937' }}>{m.sender.username}</div>
+                          <div style={{ color: '#1f2937' }}>{m.content}</div>
                         </div>
                       ))}
                     </div>
@@ -1361,7 +1947,16 @@ function MyProfile({ user, setUser }) {
                         value={messageText}
                         onChange={e => setMessageText(e.target.value)}
                         placeholder="Type a message..."
-                        style={{ flex: 1, padding: '0.8rem', border: '2px solid #e0e0e0', borderRadius: '10px' }}
+                        style={{ 
+                          flex: 1, 
+                          padding: '0.8rem', 
+                          border: '1px solid rgba(255, 255, 255, 0.3)', 
+                          borderRadius: '10px',
+                          background: 'rgba(255, 255, 255, 0.35)',
+                          backdropFilter: 'blur(8px)',
+                          WebkitBackdropFilter: 'blur(8px)',
+                          color: '#1f2937'
+                        }}
                       />
                       <button
                         onClick={async () => {
@@ -1390,10 +1985,14 @@ function MyProfile({ user, setUser }) {
             <h2 style={{ marginBottom: '1.5rem' }}>Friends</h2>
             
             <div style={{ 
-              background: '#f8f9fa',
+              background: 'rgba(255, 255, 255, 0.25)',
+              backdropFilter: 'blur(6px)',
+              WebkitbackdropFilter: 'blur(6px)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
               padding: '1.5rem',
               borderRadius: '15px',
-              marginBottom: '2rem'
+              marginBottom: '2rem',
+              boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
             }}>
               <h3 style={{ marginBottom: '1rem' }}>Add Friends</h3>
               <div style={{ display: 'flex', gap: '1rem' }}>
@@ -1406,8 +2005,12 @@ function MyProfile({ user, setUser }) {
                   style={{
                     flex: 1,
                     padding: '0.8rem',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '10px'
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.35)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    color: '#1f2937'
                   }}
                 />
                 <button onClick={handleSearch} className="submit-btn" style={{ width: 'auto' }}>
@@ -1423,11 +2026,14 @@ function MyProfile({ user, setUser }) {
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       padding: '0.8rem',
-                      background: 'white',
+                      background: 'rgba(255, 255, 255, 0.35)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
                       borderRadius: '10px',
                       marginTop: '0.5rem'
                     }}>
-                      <span>{result.username} ({result.full_name || 'No name'})</span>
+                      <span style={{ color: '#1f2937' }}>{result.username} ({result.full_name || 'No name'})</span>
                       <button
                         onClick={() => handleAddFriend(result.id)}
                         style={{
@@ -1450,13 +2056,16 @@ function MyProfile({ user, setUser }) {
             {/* Friend Requests Section */}
             {friendRequests.length > 0 && (
               <div style={{ 
-                background: '#fff3cd',
+                background: 'rgba(255, 193, 7, 0.15)',
+                backdropFilter: 'blur(6px)',
+                WebkitbackdropFilter: 'blur(6px)',
                 padding: '1.5rem',
                 borderRadius: '15px',
                 marginBottom: '2rem',
-                border: '2px solid #ffc107'
+                border: '1px solid rgba(255, 193, 7, 0.3)',
+                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
               }}>
-                <h3 style={{ marginBottom: '1rem', color: '#856404' }}>Friend Requests ({friendRequests.length})</h3>
+                <h3 style={{ marginBottom: '1rem', color: '#1f2937', fontWeight: 'bold' }}>Friend Requests ({friendRequests.length})</h3>
                 {friendRequests.map(req => (
                   <div 
                     key={req.id}
@@ -1465,7 +2074,10 @@ function MyProfile({ user, setUser }) {
                       alignItems: 'center',
                       gap: '1rem',
                       padding: '1rem',
-                      background: 'white',
+                      background: 'rgba(255, 255, 255, 0.35)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
                       borderRadius: '10px',
                       marginBottom: '0.8rem'
                     }}
@@ -1506,8 +2118,8 @@ function MyProfile({ user, setUser }) {
                       )}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: '600', color: '#333' }}>{req.from_user.username}</div>
-                      <div style={{ fontSize: '0.9rem', color: '#666' }}>
+                      <div style={{ fontWeight: '600', color: '#1f2937' }}>{req.from_user.username}</div>
+                      <div style={{ fontSize: '0.9rem', color: '#1f2937' }}>
                         {req.from_user.full_name || 'No name'}
                       </div>
                     </div>
@@ -1541,9 +2153,13 @@ function MyProfile({ user, setUser }) {
                     alignItems: 'center',
                     gap: '1rem',
                     padding: '1rem',
-                    background: '#f8f9fa',
+                    background: 'rgba(255, 255, 255, 0.25)',
+                    backdropFilter: 'blur(6px)',
+                    WebkitbackdropFilter: 'blur(6px)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
                     borderRadius: '15px',
                     marginBottom: '0.8rem',
+                    boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
                     cursor: 'default'
                   }}
                 >
@@ -1583,8 +2199,8 @@ function MyProfile({ user, setUser }) {
                     )}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: '600', color: '#333' }}>{friend.username}</div>
-                    <div style={{ fontSize: '0.9rem', color: '#666' }}>
+                    <div style={{ fontWeight: '600', color: '#1f2937' }}>{friend.username}</div>
+                    <div style={{ fontSize: '0.9rem', color: '#1f2937' }}>
                       {friend.full_name || 'No name'}
                     </div>
                   </div>
@@ -1639,7 +2255,7 @@ function MyProfile({ user, setUser }) {
           zIndex: 9999
         }}>
           <div className="form-container" style={{ maxWidth: '600px' }}>
-            <h2>New Journal Entry</h2>
+            <h2>{editingJournalId ? 'Edit Journal Entry' : 'New Journal Entry'}</h2>
             <form onSubmit={handleCreateJournal}>
               <div className="form-group">
                 <label>Title</label>
@@ -1670,11 +2286,11 @@ function MyProfile({ user, setUser }) {
                 </label>
               </div>
               <button type="submit" className="submit-btn">
-                Create Journal
+                {editingJournalId ? 'Update Journal' : 'Create Journal'}
               </button>
               <button 
                 type="button" 
-                onClick={() => setShowJournalForm(false)}
+                onClick={editingJournalId ? handleCancelJournalEdit : () => setShowJournalForm(false)}
                 style={{ marginTop: '1rem', background: '#ccc' }}
                 className="submit-btn"
               >

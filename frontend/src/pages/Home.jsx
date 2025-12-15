@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Chatbot from '../components/Chatbot';
-import { createDonation } from '../services/api';
+import ArticleTile from '../components/ArticleTile';
+import { createDonation, getTopArticles } from '../services/api';
 
 function Home({ user }) {
   const navigate = useNavigate();
   const [showDonationModal, setShowDonationModal] = useState(false);
+  const [featuredArticles, setFeaturedArticles] = useState([]);
   const [donationAmount, setDonationAmount] = useState('');
   const [donorName, setDonorName] = useState('');
   const [donorEmail, setDonorEmail] = useState('');
@@ -41,6 +43,20 @@ function Home({ user }) {
 
     return () => clearInterval(interval);
   }, [slides.length]);
+
+  // Fetch featured articles
+  useEffect(() => {
+    fetchFeaturedArticles();
+  }, []);
+
+  const fetchFeaturedArticles = async () => {
+    try {
+      const data = await getTopArticles();
+      setFeaturedArticles(data.slice(0, 3)); // Show top 3 articles on home page
+    } catch (error) {
+      console.error('Error fetching featured articles:', error);
+    }
+  };
 
   const handleDonation = async () => {
     if (!donationAmount || parseFloat(donationAmount) <= 0) {
@@ -132,42 +148,57 @@ function Home({ user }) {
       </div>
 
       <div className="container">
-        <div 
-          onClick={() => navigate('/articles')}
-          style={{
-            marginTop: '3rem',
-            cursor: 'pointer',
-            position: 'relative',
-            borderRadius: '25px',
-            overflow: 'hidden',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-            transition: 'transform 0.3s'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          <img 
-            src="https://via.placeholder.com/1200x300?text=Explore+Our+Articles" 
-            alt="Articles"
-            style={{ width: '100%', display: 'block' }}
-          />
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            background: 'rgba(255,255,255,0.95)',
-            padding: '2rem 3rem',
-            borderRadius: '20px',
-            textAlign: 'center'
+        {/* Featured Articles Section */}
+        <div style={{ marginTop: '3rem' }}>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '1.5rem'
           }}>
-            <h2 style={{ color: '#7F7FD5', marginBottom: '0.5rem' }}>
-              Explore Articles
-            </h2>
-            <p style={{ color: '#666' }}>
-              Read expert insights and wellness tips
-            </p>
+            <h2 style={{ color: 'white', margin: 0 }}>⭐ Featured Articles</h2>
+            <button
+              onClick={() => navigate('/articles')}
+              style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                border: 'none',
+                padding: '0.7rem 1.5rem',
+                borderRadius: '25px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '0.95rem',
+                transition: 'transform 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              View All Articles →
+            </button>
           </div>
+          
+          {featuredArticles.length > 0 ? (
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: '1.5rem',
+              marginBottom: '2rem'
+            }}>
+              {featuredArticles.map(article => (
+                <ArticleTile key={article.id} article={article} />
+              ))}
+            </div>
+          ) : (
+            <div style={{
+              background: 'white',
+              borderRadius: '20px',
+              padding: '3rem',
+              textAlign: 'center',
+              color: '#999'
+            }}>
+              <p>No featured articles yet. Check back soon!</p>
+            </div>
+          )}
         </div>
 
         {/* Donation Section */}

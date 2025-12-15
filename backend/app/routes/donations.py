@@ -9,8 +9,10 @@ def create_donation():
     """Create a new donation record - no authentication required"""
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Request body is required'}), 400
         
-        # Only amount and payment_method are required
+        # Validate required fields
         if not data.get('amount'):
             return jsonify({'error': 'amount is required'}), 400
         if not data.get('payment_method'):
@@ -21,8 +23,15 @@ def create_donation():
             amount = float(data['amount'])
             if amount <= 0:
                 return jsonify({'error': 'Amount must be greater than 0'}), 400
-        except ValueError:
-            return jsonify({'error': 'Invalid amount'}), 400
+            if amount > 1000000:
+                return jsonify({'error': 'Amount exceeds maximum limit'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Invalid amount format'}), 400
+        
+        # Validate payment method
+        valid_payment_methods = ['bkash', 'nagad', 'rocket', 'bank', 'card']
+        if data['payment_method'].lower() not in valid_payment_methods:
+            return jsonify({'error': 'Invalid payment method'}), 400
         
         # Check if anonymous donation
         is_anonymous = data.get('is_anonymous', False)
@@ -62,11 +71,13 @@ def create_donation():
 
 @donations_bp.route('/donations', methods=['GET'])
 def get_donations():
-    """Get all donations (admin only in production)"""
+    """Get all donations with pagination and filters"""
     try:
         # Optional filters
         status = request.args.get('status')
         payment_method = request.args.get('payment_method')
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 50))
         
         query = Donation.query
         
@@ -76,11 +87,17 @@ def get_donations():
             query = query.filter_by(payment_method=payment_method)
         
         # Order by most recent first
-        donations = query.order_by(Donation.created_at.desc()).all()
+        query = query.order_by(Donation.created_at.desc())
+        
+        # Paginate
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
         
         return jsonify({
-            'donations': [d.to_dict() for d in donations],
-            'total': len(donations)
+            'donations': [d.to_dict() for d in pagination.items],
+            'total': pagination.total,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': pagination.pages
         }), 200
         
     except Exception as e:

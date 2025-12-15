@@ -171,13 +171,13 @@ class MoodEntry(db.Model):
 
 class Article(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.id'), nullable=False)
-    title = db.Column(db.String(200), nullable=False)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.id'), nullable=False, index=True)
+    title = db.Column(db.String(200), nullable=False, index=True)
     content = db.Column(db.Text, nullable=False)
-    cover_image = db.Column(db.String(255))
-    mood_category = db.Column(db.String(50))  # happy, sad, anxious, stressed, neutral
+    cover_image = db.Column(db.String(255), nullable=False)  # Mandatory cover image
+    mood_category = db.Column(db.String(50), index=True)  # happy, sad, anxious, stressed, neutral
     keywords = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     
     # Relationships
     author = db.relationship('Doctor', backref='articles', lazy=True)
@@ -428,18 +428,20 @@ class Notification(db.Model):
         }
 
 class Donation(db.Model):
+    __tablename__ = 'donation'
+    
     id = db.Column(db.Integer, primary_key=True)
     donor_name = db.Column(db.String(100), nullable=True)  # Optional for anonymous donations
-    donor_email = db.Column(db.String(120), nullable=True)  # Optional
-    amount = db.Column(db.Float, nullable=False)
+    donor_email = db.Column(db.String(120), nullable=True, index=True)  # Indexed for lookup
+    amount = db.Column(db.Float, nullable=False, index=True)  # Indexed for stats
     currency = db.Column(db.String(10), default='BDT')
-    payment_method = db.Column(db.String(50), nullable=False)  # 'bkash', 'nagad', 'rocket', etc.
-    transaction_id = db.Column(db.String(100), nullable=True)
+    payment_method = db.Column(db.String(50), nullable=False, index=True)  # Indexed for filtering
+    transaction_id = db.Column(db.String(100), nullable=True, unique=True)  # Unique transaction IDs
     phone_number = db.Column(db.String(20), nullable=True)
     message = db.Column(db.Text, nullable=True)
-    is_anonymous = db.Column(db.Boolean, default=False)
-    status = db.Column(db.String(20), default='pending')  # pending, completed, failed
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_anonymous = db.Column(db.Boolean, default=False, index=True)
+    status = db.Column(db.String(20), default='pending', index=True)  # Indexed for filtering
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)  # Indexed for sorting
     
     def to_dict(self):
         return {

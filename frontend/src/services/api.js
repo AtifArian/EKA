@@ -86,10 +86,19 @@ export const getArticles = (params) => {
   const query = new URLSearchParams(params).toString();
   return api.get(`/articles?${query}`).then(res => res.data);
 };
+export const getTopArticles = () => api.get('/articles/top').then(res => res.data);
 export const getArticle = (articleId) => api.get(`/articles/${articleId}`).then(res => res.data);
 export const getMyArticles = () => api.get('/articles/my').then(res => res.data);
-export const createArticle = (data) => api.post('/articles', data).then(res => res.data);
-export const updateArticle = (articleId, data) => api.put(`/articles/${articleId}`, data).then(res => res.data);
+export const createArticle = (formData) => {
+  return api.post('/articles', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }).then(res => res.data);
+};
+export const updateArticle = (articleId, formData) => {
+  return api.put(`/articles/${articleId}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }).then(res => res.data);
+};
 export const deleteArticle = (articleId) => api.delete(`/articles/${articleId}`).then(res => res.data);
 export const likeArticle = (articleId) => api.post(`/articles/${articleId}/like`).then(res => res.data);
 export const addArticleComment = (articleId, data) => api.post(`/articles/${articleId}/comments`, data).then(res => res.data);
@@ -107,6 +116,16 @@ export const updateJournal = (journalId, data) => api.put(`/journals/${journalId
 export const deleteJournal = (journalId) => api.delete(`/journals/${journalId}`).then(res => res.data);
 export const heartJournal = (journalId) => api.post(`/journals/${journalId}/heart`).then(res => res.data);
 export const addJournalComment = (journalId, data) => api.post(`/journals/${journalId}/comments`, data).then(res => res.data);
+
+// Booking APIs
+export const getMyBookings = () => api.get('/bookings/my-bookings').then(res => res.data);
+export const getMySessions = () => api.get('/bookings/my-sessions').then(res => res.data);
+export const cancelBooking = (bookingId) => api.put(`/bookings/${bookingId}/cancel`).then(res => res.data);
+export const completeBooking = (bookingId) => api.put(`/bookings/${bookingId}/complete`).then(res => res.data);
+export const confirmBooking = (bookingId) => api.put(`/bookings/${bookingId}/confirm`).then(res => res.data);
+
+// Doctor APIs
+export const getHighRiskPatients = () => api.get('/doctors/high-risk-patients').then(res => res.data);
 
 // Donation APIs - no authentication required
 export const createDonation = (data) => {
