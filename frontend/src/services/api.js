@@ -30,6 +30,31 @@ api.interceptors.request.use(
   }
 );
 
+// Response interceptor to handle token expiration
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // Token expired or invalid
+      const errorMsg = error.response.data?.msg || error.response.data?.error || '';
+      if (errorMsg.includes('expired') || errorMsg.includes('Token') || errorMsg.includes('JWT')) {
+        // Clear invalid token
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        // Redirect to login page
+        if (window.location.pathname !== '/login') {
+          alert('Your session has expired. Please login again.');
+          window.location.href = '/login';
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const checkTodayMood = () => api.get('/mood/today').then(res => res.data);
 export const createMoodEntry = (data) => api.post('/mood', data).then(res => res.data);
 export const getMoodEntries = (days = 30) => api.get(`/mood?days=${days}`).then(res => res.data);
@@ -126,6 +151,11 @@ export const confirmBooking = (bookingId) => api.put(`/bookings/${bookingId}/con
 
 // Doctor APIs
 export const getHighRiskPatients = () => api.get('/doctors/high-risk-patients').then(res => res.data);
+
+// Activity APIs
+export const getMyActivity = () => api.get('/activity/my').then(res => res.data);
+export const getPatientActivity = (patientId) => api.get(`/activity/patient/${patientId}`).then(res => res.data);
+export const trackArticleRead = (articleId) => api.post(`/activity/track-article-read/${articleId}`).then(res => res.data);
 
 // Donation APIs - no authentication required
 export const createDonation = (data) => {

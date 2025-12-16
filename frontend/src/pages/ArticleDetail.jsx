@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getArticle, likeArticle, addArticleComment, updateArticle, deleteArticle } from '../services/api';
+import { getArticle, likeArticle, addArticleComment, updateArticle, deleteArticle, trackArticleRead } from '../services/api';
 
 function ArticleDetail({ user }) {
   const { id } = useParams();
@@ -23,6 +23,16 @@ function ArticleDetail({ user }) {
       setEditContent(data.content);
       setEditMoodCategory(data.mood_category || '');
       setEditKeywords(data.keywords || '');
+      
+      // Track article read if user is logged in
+      if (user) {
+        try {
+          await trackArticleRead(id);
+        } catch (error) {
+          // Silently fail - tracking is not critical
+          console.log('Article read tracking failed:', error);
+        }
+      }
     } catch (error) {
       console.error('Error:', error);
     }

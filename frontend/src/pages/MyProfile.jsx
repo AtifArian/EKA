@@ -24,7 +24,9 @@ import {
   getMySessions,
   cancelBooking,
   completeBooking,
-  confirmBooking
+  confirmBooking,
+  getMyActivity,
+  getPatientActivity
 } from '../services/api';
 import {
   listThreads,
@@ -55,6 +57,9 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
   const [editingJournalId, setEditingJournalId] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [sessions, setSessions] = useState([]);
+  const [activityData, setActivityData] = useState(null);
+  const [selectedPatientForActivity, setSelectedPatientForActivity] = useState(null);
+  const [patientActivityData, setPatientActivityData] = useState(null);
   
   const [journalForm, setJournalForm] = useState({
     title: '',
@@ -149,6 +154,9 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
       } else if (activeTab === 'my-sessions' && user.is_doctor) {
         const data = await getMySessions();
         setSessions(data);
+      } else if (activeTab === 'activity') {
+        const data = await getMyActivity();
+        setActivityData(data);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -376,7 +384,18 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
       setArticleForm({ title: '', content: '', mood_category: 'neutral', keywords: '', cover_image: null });
       loadData();
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to publish article');
+      console.error('Article creation error:', error);
+      
+      if (error.response?.status === 401) {
+        alert('Your session has expired. Please login again.');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      } else if (error.response?.status === 403) {
+        alert(error.response?.data?.error || 'Only verified doctors can publish articles. Please complete your verification.');
+      } else {
+        alert(error.response?.data?.error || 'Failed to publish article. Please try again.');
+      }
     }
   };
 
@@ -696,6 +715,21 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
                 📅 My Sessions
               </button>
               <button
+                onClick={() => setActiveTab('activity')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '1rem 1.5rem',
+                  fontSize: '1.05rem',
+                  fontWeight: '600',
+                  color: activeTab === 'activity' ? '#7F7FD5' : '#000',
+                  borderBottom: activeTab === 'activity' ? '3px solid #7F7FD5' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                📊 Activity
+              </button>
+              <button
                 onClick={() => setActiveTab('friends')}
                 style={{
                   background: 'none',
@@ -828,6 +862,21 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
                 }}
               >
                 📝 Publish Article
+              </button>
+              <button
+                onClick={() => setActiveTab('activity')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '1rem 1.5rem',
+                  fontSize: '1.05rem',
+                  fontWeight: '600',
+                  color: activeTab === 'activity' ? '#7F7FD5' : '#000',
+                  borderBottom: activeTab === 'activity' ? '3px solid #7F7FD5' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                📊 Activity
               </button>
             </>
           )}
@@ -1000,7 +1049,8 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
                   <div style={{ 
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    marginBottom: '1rem'
                   }}>
                     <div>
                       <h3 style={{ color: '#1f2937' }}>{patient.username}</h3>
@@ -1018,6 +1068,32 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
                       Risk: {Math.round(patient.suicide_risk_score)}%
                     </div>
                   </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const data = await getPatientActivity(patient.id);
+                        setPatientActivityData(data);
+                        setSelectedPatientForActivity(patient);
+                      } catch (error) {
+                        alert('Failed to load patient activity data');
+                      }
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      padding: '0.7rem 1.5rem',
+                      border: 'none',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      fontSize: '0.95rem',
+                      fontWeight: '600',
+                      transition: 'transform 0.2s',
+                    }}
+                    onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
+                    onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                  >
+                    📊 View Activity History
+                  </button>
                 </div>
               ))
             ) : (
@@ -1031,6 +1107,163 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
                 <p style={{ fontSize: '1.1rem' }}>
                   No patients yet. They will appear here when they accept your chat requests.
                 </p>
+              </div>
+            )}
+
+            {/* Patient Activity View */}
+            {selectedPatientForActivity && patientActivityData && (
+              <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0, 0, 0, 0.7)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000,
+                padding: '2rem'
+              }}>
+                <div style={{
+                  background: 'linear-gradient(135deg, #E0C3FC 0%, #8EC5FC 100%)',
+                  borderRadius: '20px',
+                  padding: '2rem',
+                  maxWidth: '900px',
+                  width: '100%',
+                  maxHeight: '90vh',
+                  overflowY: 'auto',
+                  position: 'relative'
+                }}>
+                  <button
+                    onClick={() => {
+                      setSelectedPatientForActivity(null);
+                      setPatientActivityData(null);
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: '1rem',
+                      right: '1rem',
+                      background: '#e74c3c',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '40px',
+                      height: '40px',
+                      fontSize: '1.5rem',
+                      cursor: 'pointer',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    ×
+                  </button>
+
+                  <h2 style={{ marginBottom: '1rem', fontSize: '1.8rem', color: '#1f2937' }}>
+                    📊 {selectedPatientForActivity.username}'s Activity
+                  </h2>
+                  <p style={{ marginBottom: '2rem', color: '#6b7280', fontSize: '0.95rem' }}>
+                    Last 60 days of activity tracking
+                  </p>
+
+                  {/* Summary Cards */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                    gap: '1rem',
+                    marginBottom: '2rem'
+                  }}>
+                    <div style={{
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      padding: '1rem',
+                      borderRadius: '12px',
+                      color: 'white'
+                    }}>
+                      <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>Mood Entries</div>
+                      <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{patientActivityData.summary.total_mood_entries}</div>
+                      <div style={{ fontSize: '0.75rem' }}>Avg: {patientActivityData.summary.avg_mood_level.toFixed(1)}/5</div>
+                    </div>
+                    <div style={{
+                      background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                      padding: '1rem',
+                      borderRadius: '12px',
+                      color: 'white'
+                    }}>
+                      <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>Journals</div>
+                      <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{patientActivityData.summary.total_journals}</div>
+                    </div>
+                    <div style={{
+                      background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                      padding: '1rem',
+                      borderRadius: '12px',
+                      color: 'white'
+                    }}>
+                      <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>Articles Read</div>
+                      <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{patientActivityData.summary.total_articles_read}</div>
+                    </div>
+                  </div>
+
+                  {/* Charts */}
+                  <div style={{
+                    background: 'rgba(255, 255, 255, 0.5)',
+                    padding: '1.5rem',
+                    borderRadius: '15px',
+                    marginBottom: '1.5rem'
+                  }}>
+                    {patientActivityData.mood_timeline && patientActivityData.mood_timeline.length > 0 && (
+                      <div style={{ marginBottom: '2rem' }}>
+                        <h4 style={{ marginBottom: '1rem', color: '#1f2937' }}>Mood Trend</h4>
+                        <svg width="100%" height="150" viewBox="0 0 600 150">
+                          {(() => {
+                            const data = patientActivityData.mood_timeline;
+                            const maxValue = Math.max(...data.map(d => d.mood_level), 5);
+                            const padding = 30;
+                            return (
+                              <>
+                                <polyline
+                                  points={data.map((d, i) => {
+                                    const x = padding + (i / (data.length - 1 || 1)) * (600 - 2 * padding);
+                                    const y = 150 - padding - (d.mood_level / maxValue) * (150 - 2 * padding);
+                                    return `${x},${y}`;
+                                  }).join(' ')}
+                                  fill="none"
+                                  stroke="#667eea"
+                                  strokeWidth="2"
+                                />
+                                {data.map((d, i) => {
+                                  const x = padding + (i / (data.length - 1 || 1)) * (600 - 2 * padding);
+                                  const y = 150 - padding - (d.mood_level / maxValue) * (150 - 2 * padding);
+                                  return <circle key={i} cx={x} cy={y} r="3" fill="#667eea" />;
+                                })}
+                              </>
+                            );
+                          })()}
+                        </svg>
+                      </div>
+                    )}
+
+                    {patientActivityData.journal_list && patientActivityData.journal_list.length > 0 && (
+                      <div>
+                        <h4 style={{ marginBottom: '0.8rem', color: '#1f2937' }}>Recent Journals</h4>
+                        <div style={{ display: 'grid', gap: '0.5rem' }}>
+                          {patientActivityData.journal_list.slice(0, 5).map(journal => (
+                            <div key={journal.id} style={{
+                              background: 'rgba(255, 255, 255, 0.7)',
+                              padding: '0.8rem',
+                              borderRadius: '8px',
+                              fontSize: '0.9rem'
+                            }}>
+                              <strong>{journal.title}</strong>
+                              <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.3rem' }}>
+                                {new Date(journal.created_at).toLocaleDateString()}
+                                {journal.emotion && ` • ${journal.emotion}`}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -1532,6 +1765,288 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
                 Publish Article
               </button>
             </form>
+          </div>
+        )}
+
+        {/* Activity Tab */}
+        {activeTab === 'activity' && (
+          <div>
+            {activityData ? (
+              <div>
+                <h2 style={{ marginBottom: '1.5rem', fontSize: '2rem', fontWeight: 'bold', color: '#1f2937' }}>
+                  📊 My Activity Dashboard
+                </h2>
+
+                {/* Summary Cards */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: '1.5rem',
+                  marginBottom: '2rem'
+                }}>
+                  <div style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    padding: '1.5rem',
+                    borderRadius: '15px',
+                    color: 'white',
+                    boxShadow: '0 8px 20px rgba(102, 126, 234, 0.3)'
+                  }}>
+                    <h3 style={{ fontSize: '0.9rem', opacity: 0.9, marginBottom: '0.5rem' }}>Mood Entries</h3>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>{activityData.summary.total_mood_entries}</div>
+                    <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                      Avg: {activityData.summary.avg_mood_level.toFixed(1)}/5
+                    </p>
+                  </div>
+
+                  <div style={{
+                    background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                    padding: '1.5rem',
+                    borderRadius: '15px',
+                    color: 'white',
+                    boxShadow: '0 8px 20px rgba(240, 147, 251, 0.3)'
+                  }}>
+                    <h3 style={{ fontSize: '0.9rem', opacity: 0.9, marginBottom: '0.5rem' }}>Journal Entries</h3>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>{activityData.summary.total_journals}</div>
+                  </div>
+
+                  <div style={{
+                    background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                    padding: '1.5rem',
+                    borderRadius: '15px',
+                    color: 'white',
+                    boxShadow: '0 8px 20px rgba(79, 172, 254, 0.3)'
+                  }}>
+                    <h3 style={{ fontSize: '0.9rem', opacity: 0.9, marginBottom: '0.5rem' }}>Articles Read</h3>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>{activityData.summary.total_articles_read}</div>
+                  </div>
+
+                  <div style={{
+                    background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                    padding: '1.5rem',
+                    borderRadius: '15px',
+                    color: 'white',
+                    boxShadow: '0 8px 20px rgba(250, 112, 154, 0.3)'
+                  }}>
+                    <h3 style={{ fontSize: '0.9rem', opacity: 0.9, marginBottom: '0.5rem' }}>Articles Liked</h3>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>{activityData.summary.total_articles_liked}</div>
+                  </div>
+
+                  <div style={{
+                    background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+                    padding: '1.5rem',
+                    borderRadius: '15px',
+                    color: '#1f2937',
+                    boxShadow: '0 8px 20px rgba(168, 237, 234, 0.3)'
+                  }}>
+                    <h3 style={{ fontSize: '0.9rem', opacity: 0.9, marginBottom: '0.5rem' }}>Comments</h3>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>{activityData.summary.total_article_comments}</div>
+                  </div>
+                </div>
+
+                {/* Charts Section */}
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.25)',
+                  backdropFilter: 'blur(6px)',
+                  WebkitBackdropFilter: 'blur(6px)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  padding: '1.5rem',
+                  borderRadius: '15px',
+                  marginBottom: '2rem',
+                  boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
+                }}>
+                  <h3 style={{ marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937' }}>
+                    📈 Activity Trends (Last 30 Days)
+                  </h3>
+                  
+                  {/* Mood Timeline Chart */}
+                  {activityData.mood_timeline && activityData.mood_timeline.length > 0 && (
+                    <div style={{ marginBottom: '2rem' }}>
+                      <h4 style={{ marginBottom: '1rem', color: '#1f2937' }}>Mood Levels Over Time</h4>
+                      <svg width="600" height="200" style={{ background: 'rgba(255, 255, 255, 0.5)', borderRadius: '10px', maxWidth: '100%' }}>
+                        {(() => {
+                          const data = activityData.mood_timeline;
+                          const maxValue = Math.max(...data.map(d => d.mood_level), 5);
+                          const padding = 40;
+                          return (
+                            <>
+                              <polyline
+                                points={data.map((d, i) => {
+                                  const x = padding + (i / (data.length - 1 || 1)) * (600 - 2 * padding);
+                                  const y = 200 - padding - (d.mood_level / maxValue) * (200 - 2 * padding);
+                                  return `${x},${y}`;
+                                }).join(' ')}
+                                fill="none"
+                                stroke="#667eea"
+                                strokeWidth="3"
+                              />
+                              {data.map((d, i) => {
+                                const x = padding + (i / (data.length - 1 || 1)) * (600 - 2 * padding);
+                                const y = 200 - padding - (d.mood_level / maxValue) * (200 - 2 * padding);
+                                return <circle key={i} cx={x} cy={y} r="4" fill="#667eea" />;
+                              })}
+                            </>
+                          );
+                        })()}
+                      </svg>
+                    </div>
+                  )}
+
+                  {/* Journal Timeline Chart */}
+                  {activityData.journal_timeline && Object.keys(activityData.journal_timeline).length > 0 && (
+                    <div style={{ marginBottom: '2rem' }}>
+                      <h4 style={{ marginBottom: '1rem', color: '#1f2937' }}>Journal Entries Per Day</h4>
+                      <svg width="600" height="200" style={{ background: 'rgba(255, 255, 255, 0.5)', borderRadius: '10px', maxWidth: '100%' }}>
+                        {(() => {
+                          const timeline = activityData.journal_timeline;
+                          const dates = Object.keys(timeline).sort();
+                          const data = dates.map(date => ({ date, value: timeline[date] }));
+                          const maxValue = Math.max(...data.map(d => d.value), 1);
+                          const padding = 40;
+                          return (
+                            <>
+                              <polyline
+                                points={data.map((d, i) => {
+                                  const x = padding + (i / (data.length - 1 || 1)) * (600 - 2 * padding);
+                                  const y = 200 - padding - (d.value / maxValue) * (200 - 2 * padding);
+                                  return `${x},${y}`;
+                                }).join(' ')}
+                                fill="none"
+                                stroke="#f093fb"
+                                strokeWidth="3"
+                              />
+                              {data.map((d, i) => {
+                                const x = padding + (i / (data.length - 1 || 1)) * (600 - 2 * padding);
+                                const y = 200 - padding - (d.value / maxValue) * (200 - 2 * padding);
+                                return <circle key={i} cx={x} cy={y} r="4" fill="#f093fb" />;
+                              })}
+                            </>
+                          );
+                        })()}
+                      </svg>
+                    </div>
+                  )}
+
+                  {/* Articles Read Timeline Chart */}
+                  {activityData.articles_read_timeline && Object.keys(activityData.articles_read_timeline).length > 0 && (
+                    <div style={{ marginBottom: '2rem' }}>
+                      <h4 style={{ marginBottom: '1rem', color: '#1f2937' }}>Articles Read Per Day</h4>
+                      <svg width="600" height="200" style={{ background: 'rgba(255, 255, 255, 0.5)', borderRadius: '10px', maxWidth: '100%' }}>
+                        {(() => {
+                          const timeline = activityData.articles_read_timeline;
+                          const dates = Object.keys(timeline).sort();
+                          const data = dates.map(date => ({ date, value: timeline[date] }));
+                          const maxValue = Math.max(...data.map(d => d.value), 1);
+                          const padding = 40;
+                          return (
+                            <>
+                              <polyline
+                                points={data.map((d, i) => {
+                                  const x = padding + (i / (data.length - 1 || 1)) * (600 - 2 * padding);
+                                  const y = 200 - padding - (d.value / maxValue) * (200 - 2 * padding);
+                                  return `${x},${y}`;
+                                }).join(' ')}
+                                fill="none"
+                                stroke="#4facfe"
+                                strokeWidth="3"
+                              />
+                              {data.map((d, i) => {
+                                const x = padding + (i / (data.length - 1 || 1)) * (600 - 2 * padding);
+                                const y = 200 - padding - (d.value / maxValue) * (200 - 2 * padding);
+                                return <circle key={i} cx={x} cy={y} r="4" fill="#4facfe" />;
+                              })}
+                            </>
+                          );
+                        })()}
+                      </svg>
+                    </div>
+                  )}
+                </div>
+
+                {/* Recent Journal Entries */}
+                {activityData.journal_list && activityData.journal_list.length > 0 && (
+                  <div style={{
+                    background: 'rgba(255, 255, 255, 0.25)',
+                    backdropFilter: 'blur(6px)',
+                    WebkitBackdropFilter: 'blur(6px)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    padding: '1.5rem',
+                    borderRadius: '15px',
+                    marginBottom: '2rem',
+                    boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
+                  }}>
+                    <h3 style={{ marginBottom: '1rem', fontSize: '1.3rem', fontWeight: 'bold', color: '#1f2937' }}>
+                      📝 Recent Journal Entries
+                    </h3>
+                    <div style={{ display: 'grid', gap: '1rem' }}>
+                      {activityData.journal_list.slice(0, 5).map(journal => (
+                        <div key={journal.id} style={{
+                          background: 'rgba(255, 255, 255, 0.35)',
+                          padding: '1rem',
+                          borderRadius: '10px',
+                          border: '1px solid rgba(255, 255, 255, 0.3)'
+                        }}>
+                          <h4 style={{ color: '#1f2937', marginBottom: '0.5rem' }}>{journal.title}</h4>
+                          <div style={{ display: 'flex', gap: '0.8rem', fontSize: '0.85rem' }}>
+                            <span>{new Date(journal.created_at).toLocaleDateString()}</span>
+                            {journal.emotion && (
+                              <span style={{
+                                background: journal.emotion.includes('sad') || journal.emotion.includes('Sad') ? '#fca5a5' : 
+                                           journal.emotion.includes('Happy') || journal.emotion.includes('happy') ? '#86efac' : '#d1d5db',
+                                padding: '0.2rem 0.6rem',
+                                borderRadius: '10px',
+                                color: '#1f2937'
+                              }}>
+                                {journal.emotion}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recent Articles Read */}
+                {activityData.articles_read_list && activityData.articles_read_list.length > 0 && (
+                  <div style={{
+                    background: 'rgba(255, 255, 255, 0.25)',
+                    backdropFilter: 'blur(6px)',
+                    WebkitBackdropFilter: 'blur(6px)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    padding: '1.5rem',
+                    borderRadius: '15px',
+                    boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
+                  }}>
+                    <h3 style={{ marginBottom: '1rem', fontSize: '1.3rem', fontWeight: 'bold', color: '#1f2937' }}>
+                      📰 Recently Read Articles
+                    </h3>
+                    <div style={{ display: 'grid', gap: '0.8rem' }}>
+                      {activityData.articles_read_list.slice(0, 10).map(read => (
+                        <div key={read.id} style={{
+                          background: 'rgba(255, 255, 255, 0.35)',
+                          padding: '0.8rem',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}>
+                          <span style={{ color: '#1f2937', fontWeight: '500' }}>
+                            {read.article_title || `Article #${read.article_id}`}
+                          </span>
+                          <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                            {new Date(read.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '3rem' }}>
+                <p>Loading activity data...</p>
+              </div>
+            )}
           </div>
         )}
 
