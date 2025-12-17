@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 function VideoCall({ user, setUser }) {
@@ -6,12 +6,27 @@ function VideoCall({ user, setUser }) {
   const navigate = useNavigate();
   const jitsiContainerRef = useRef(null);
   const jitsiApiRef = useRef(null);
+  const [navHeight, setNavHeight] = useState(0);
 
   useEffect(() => {
     if (!user) {
       navigate('/login');
       return;
     }
+
+    // Measure navbar height so the call starts just below it
+    const measureNav = () => {
+      const nav = document.querySelector('.navbar');
+      if (nav) {
+        const h = Math.ceil(nav.getBoundingClientRect().height);
+        setNavHeight(h);
+      } else {
+        // Fallback to 80px if navbar not found
+        setNavHeight(80);
+      }
+    };
+    measureNav();
+    window.addEventListener('resize', measureNav);
 
     // Load Jitsi Meet External API script
     const script = document.createElement('script');
@@ -26,6 +41,7 @@ function VideoCall({ user, setUser }) {
         jitsiApiRef.current.dispose();
       }
       document.body.removeChild(script);
+      window.removeEventListener('resize', measureNav);
     };
   }, [user, navigate]);
 
@@ -72,12 +88,12 @@ function VideoCall({ user, setUser }) {
       ref={jitsiContainerRef}
       style={{ 
         position: 'fixed',
-        top: '70px',
+        top: `${navHeight}px`,
         left: 0,
         right: 0,
         bottom: 0,
         width: '100%',
-        height: 'calc(100vh - 70px)',
+        height: `calc(100vh - ${navHeight}px)`,
         background: '#000',
         zIndex: 1
       }}
