@@ -1,17 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getClinicDetail, bookSession, addClinicReview, createDoctorChatRequest, getMyBookings } from '../services/api';
-import { MapContainer, TileLayer, Marker } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-
-// Fix Leaflet default icon issue
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
-  iconUrl: require('leaflet/dist/images/marker-icon.png'),
-  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
-});
 
 function ClinicDetail({ user }) {
   const { id } = useParams();
@@ -239,23 +228,36 @@ function ClinicDetail({ user }) {
             overflow: 'hidden',
             border: '2px solid #e0e0e0'
           }}>
-            <MapContainer
-              center={[clinic.latitude, clinic.longitude]}
-              zoom={15}
-              style={{ height: '100%', width: '100%' }}
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              <Marker position={[clinic.latitude, clinic.longitude]} />
-            </MapContainer>
+            <iframe
+              title="Clinic Location Map"
+              width="100%"
+              height="100%"
+              style={{ border: 0 }}
+              loading="lazy"
+              allowFullScreen
+              referrerPolicy="no-referrer-when-downgrade"
+              src={`https://www.google.com/maps/embed/v1/place?key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY'}&q=${clinic.latitude},${clinic.longitude}&zoom=15`}
+            />
           </div>
           {clinic.location && (
             <p style={{ marginTop: '1rem', color: '#666', fontSize: '0.95rem' }}>
               📍 <strong>{clinic.location}</strong>
             </p>
           )}
+          <a 
+            href={`https://www.google.com/maps/search/?api=1&query=${clinic.latitude},${clinic.longitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-block',
+              marginTop: '0.5rem',
+              color: '#667eea',
+              textDecoration: 'none',
+              fontWeight: '500'
+            }}
+          >
+            Open in Google Maps →
+          </a>
         </div>
       )}
 

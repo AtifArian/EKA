@@ -1,28 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-
-// Fix Leaflet default icon issue with React
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
-  iconUrl: require('leaflet/dist/images/marker-icon.png'),
-  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
-});
-
-function LocationMarker({ position, setPosition }) {
-  const map = useMapEvents({
-    click(e) {
-      setPosition(e.latlng);
-      map.flyTo(e.latlng, map.getZoom());
-    },
-  });
-
-  return position === null ? null : (
-    <Marker position={position} />
-  );
-}
 
 function MapLocationPicker({ initialPosition, onLocationSelect }) {
   const [position, setPosition] = useState(initialPosition || { lat: 23.8103, lng: 90.4125 }); // Default: Dhaka, Bangladesh
@@ -162,18 +138,17 @@ function MapLocationPicker({ initialPosition, onLocationSelect }) {
         border: '2px solid #e0e0e0',
         marginBottom: '0.5rem'
       }}>
-        <MapContainer
-          center={[position.lat, position.lng]}
-          zoom={13}
-          style={{ height: '100%', width: '100%' }}
+        <iframe
+          title="Location Picker Map"
+          width="100%"
+          height="100%"
+          style={{ border: 0 }}
+          loading="lazy"
+          allowFullScreen
+          referrerPolicy="no-referrer-when-downgrade"
+          src={`https://www.google.com/maps/embed/v1/place?key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY'}&q=${position.lat},${position.lng}&zoom=14`}
           key={`${position.lat}-${position.lng}`}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <LocationMarker position={position} setPosition={setPosition} />
-        </MapContainer>
+        />
       </div>
 
       <small style={{
@@ -182,9 +157,18 @@ function MapLocationPicker({ initialPosition, onLocationSelect }) {
         fontSize: '0.85rem',
         marginTop: '0.5rem'
       }}>
-        <strong>Instructions:</strong> Search for your clinic location above, or click directly on the map to set your location.
+        <strong>Instructions:</strong> Search for your clinic location above using the search box.
         <br />
         Selected: Latitude {position.lat.toFixed(6)}, Longitude {position.lng.toFixed(6)}
+        <br />
+        <a 
+          href={`https://www.google.com/maps/search/?api=1&query=${position.lat},${position.lng}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: '#667eea', textDecoration: 'none' }}
+        >
+          Adjust location on Google Maps →
+        </a>
       </small>
     </div>
   );
