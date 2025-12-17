@@ -8,6 +8,7 @@ import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import MoodTracker from './components/MoodTracker';
 import HighRiskAlert from './components/HighRiskAlert';
+import EmergencyCallPopup from './components/EmergencyCallPopup';
 
 // Import pages
 import Home from './pages/Home';
@@ -77,6 +78,10 @@ function AppContent({ user, setUser, onLogin, onLogout, navigateToInbox, setNavi
   return (
     <div className="App">
       <Navbar user={user} onLogout={onLogout} />
+      {/* Global emergency call popup for patients */}
+      {location.pathname.startsWith('/video-call') ? null : (
+        user && !user.is_doctor ? <EmergencyCallPopup user={user} /> : null
+      )}
       {location.pathname.startsWith('/video-call') ? null : (
         <>
           {user && !user.is_doctor && <MoodTracker />}
