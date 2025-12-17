@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getClinicDetail, bookSession, addClinicReview, createDoctorChatRequest } from '../services/api';
+import { getClinicDetail, bookSession, addClinicReview, createDoctorChatRequest, getMyBookings } from '../services/api';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -21,6 +21,7 @@ function ClinicDetail({ user }) {
   const [showReview, setShowReview] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [hasBooked, setHasBooked] = useState(false);
   const [bookingData, setBookingData] = useState({
     appointment_date: '',
     notes: ''
@@ -43,6 +44,26 @@ function ClinicDetail({ user }) {
   useEffect(() => {
     fetchClinicDetail();
   }, [fetchClinicDetail]);
+
+  useEffect(() => {
+    const checkBookings = async () => {
+      try {
+        if (user) {
+          const bookings = await getMyBookings();
+          const booked = Array.isArray(bookings) && bookings.some(b => {
+            const doc = b.doctor;
+            return doc && (doc.id === parseInt(id, 10));
+          });
+          setHasBooked(booked);
+        } else {
+          setHasBooked(false);
+        }
+      } catch (e) {
+        setHasBooked(false);
+      }
+    };
+    checkBookings();
+  }, [user, id]);
 
   const handleBooking = async (e) => {
     e.preventDefault();
@@ -241,10 +262,15 @@ function ClinicDetail({ user }) {
       <div className="comments-section" style={{ marginTop: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2>Reviews ({clinic.reviews.length})</h2>
-          {user && !user.is_doctor && (
+          {user && !user.is_doctor && hasBooked && (
             <button onClick={() => setShowReview(true)} className="submit-btn" style={{ width: 'auto' }}>
               Write Review
             </button>
+          )}
+          {user && !user.is_doctor && !hasBooked && (
+            <span style={{ color: '#666', fontSize: '0.9rem' }}>
+              Book a session to write a review.
+            </span>
           )}
         </div>
 
