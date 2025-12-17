@@ -22,6 +22,7 @@ import JournalDetail from './pages/JournalDetail';
 import MyProfile from './pages/MyProfile';
 import UserProfile from './pages/UserProfile';
 import Chat from './pages/Chat';
+import VideoCall from './pages/VideoCall';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -81,6 +82,14 @@ function App() {
               element={
                 <ProtectedRoute user={user}>
                   <MyProfile user={user} setUser={setUser} navigateToInbox={navigateToInbox} setNavigateToInbox={setNavigateToInbox} />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/video-call/:sessionId" 
+              element={
+                <ProtectedRoute user={user}>
+                  <VideoCall user={user} setUser={setUser} />
                 </ProtectedRoute>
               } 
             />
