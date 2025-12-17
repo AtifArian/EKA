@@ -1394,7 +1394,7 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
                           </p>
                         )}
                         
-                        <div style={{ display: 'flex', gap: '0.8rem' }}>
+                        <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
                           {session.status === 'pending' && (
                             <button
                               onClick={async () => {
@@ -1471,6 +1471,37 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
                               Cancel
                             </button>
                           )}
+                          
+                          {session.status === 'confirmed' && (() => {
+                            const now = new Date();
+                            const sessionTime = new Date(session.appointment_date);
+                            const threeHoursLater = new Date(sessionTime.getTime() + (3 * 60 * 60 * 1000));
+                            const isCallActive = now >= sessionTime && now <= threeHoursLater;
+                            
+                            return (
+                              <button
+                                onClick={() => {
+                                  if (isCallActive) {
+                                    window.open(`/video-call/${session.id}`, '_blank');
+                                  }
+                                }}
+                                style={{
+                                  background: isCallActive ? '#4CAF50' : '#9e9e9e',
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '0.6rem 1.2rem',
+                                  borderRadius: '10px',
+                                  fontSize: '0.9rem',
+                                  cursor: isCallActive ? 'pointer' : 'not-allowed',
+                                  fontWeight: '600',
+                                  opacity: isCallActive ? 1 : 0.7
+                                }}
+                                disabled={!isCallActive}
+                              >
+                                📞 Join Call
+                              </button>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -2286,32 +2317,65 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
                           </p>
                         )}
                         
-                        {isUpcoming && booking.status === 'pending' && (
-                          <button
-                            onClick={async () => {
-                              if (window.confirm('Are you sure you want to cancel this booking?')) {
-                                try {
-                                  await cancelBooking(booking.id);
-                                  loadData();
-                                } catch (error) {
-                                  alert('Failed to cancel booking');
+                        <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+                          {isUpcoming && booking.status === 'pending' && (
+                            <button
+                              onClick={async () => {
+                                if (window.confirm('Are you sure you want to cancel this booking?')) {
+                                  try {
+                                    await cancelBooking(booking.id);
+                                    loadData();
+                                  } catch (error) {
+                                    alert('Failed to cancel booking');
+                                  }
                                 }
-                              }
-                            }}
-                            style={{
-                              background: '#e74c3c',
-                              color: 'white',
-                              border: 'none',
-                              padding: '0.6rem 1.2rem',
-                              borderRadius: '10px',
-                              fontSize: '0.9rem',
-                              cursor: 'pointer',
-                              fontWeight: '600'
-                            }}
-                          >
-                            Cancel Booking
-                          </button>
-                        )}
+                              }}
+                              style={{
+                                background: '#e74c3c',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.6rem 1.2rem',
+                                borderRadius: '10px',
+                                fontSize: '0.9rem',
+                                cursor: 'pointer',
+                                fontWeight: '600'
+                              }}
+                            >
+                              Cancel Booking
+                            </button>
+                          )}
+                          
+                          {booking.status === 'confirmed' && (() => {
+                            const now = new Date();
+                            const sessionTime = new Date(booking.appointment_date);
+                            const threeHoursLater = new Date(sessionTime.getTime() + (3 * 60 * 60 * 1000));
+                            const isCallActive = now >= sessionTime && now <= threeHoursLater;
+                            
+                            return (
+                              <button
+                                onClick={() => {
+                                  if (isCallActive) {
+                                    window.open(`/video-call/${booking.id}`, '_blank');
+                                  }
+                                }}
+                                style={{
+                                  background: isCallActive ? '#4CAF50' : '#9e9e9e',
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '0.6rem 1.2rem',
+                                  borderRadius: '10px',
+                                  fontSize: '0.9rem',
+                                  cursor: isCallActive ? 'pointer' : 'not-allowed',
+                                  fontWeight: '600',
+                                  opacity: isCallActive ? 1 : 0.7
+                                }}
+                                disabled={!isCallActive}
+                              >
+                                📞 Join Call
+                              </button>
+                            );
+                          })()}
+                        </div>
                       </div>
                     </div>
                   </div>
