@@ -134,10 +134,15 @@ function ClinicDetail({ user }) {
     return <div className="loading">Loading...</div>;
   }
 
-  // Construct full URL for profile picture
+  // Construct full URL for profile picture (normalize leading slash)
   const API_BASE = process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050';
-  const profilePictureUrl = clinic.user.profile_picture
-    ? `${API_BASE}${clinic.user.profile_picture}`
+  const profilePath = clinic.user.profile_picture
+    ? (clinic.user.profile_picture.startsWith('/')
+        ? clinic.user.profile_picture
+        : `/${clinic.user.profile_picture}`)
+    : null;
+  const profilePictureUrl = profilePath
+    ? `${API_BASE}${profilePath}`
     : 'https://via.placeholder.com/500x500?text=Doctor';
 
   return (
