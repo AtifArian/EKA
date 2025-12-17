@@ -119,6 +119,7 @@ def create_app(config_class=Config):
     from app.routes.notifications import notifications_bp
     from app.routes.donations import donations_bp
     from app.routes.bookings import bookings_bp
+    from app.routes.activity import activity_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api/users')
@@ -132,6 +133,7 @@ def create_app(config_class=Config):
     app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
     app.register_blueprint(donations_bp, url_prefix='/api')
     app.register_blueprint(bookings_bp, url_prefix='/api/bookings')
+    app.register_blueprint(activity_bp, url_prefix='/api/activity')
     
     # Serve uploaded files
     from flask import send_from_directory

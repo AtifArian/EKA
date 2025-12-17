@@ -1,17 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getClinicDetail, bookSession, addClinicReview, createDoctorChatRequest } from '../services/api';
-import { MapContainer, TileLayer, Marker } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-
-// Fix Leaflet default icon issue
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
-  iconUrl: require('leaflet/dist/images/marker-icon.png'),
-  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
-});
+import { getClinicDetail, bookSession, addClinicReview, createDoctorChatRequest, getMyBookings } from '../services/api';
 
 function ClinicDetail({ user }) {
   const { id } = useParams();
@@ -21,6 +10,7 @@ function ClinicDetail({ user }) {
   const [showReview, setShowReview] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [hasBooked, setHasBooked] = useState(false);
   const [bookingData, setBookingData] = useState({
     appointment_date: '',
     notes: ''
@@ -43,6 +33,26 @@ function ClinicDetail({ user }) {
   useEffect(() => {
     fetchClinicDetail();
   }, [fetchClinicDetail]);
+
+  useEffect(() => {
+    const checkBookings = async () => {
+      try {
+        if (user) {
+          const bookings = await getMyBookings();
+          const booked = Array.isArray(bookings) && bookings.some(b => {
+            const doc = b.doctor;
+            return doc && (doc.id === parseInt(id, 10));
+          });
+          setHasBooked(booked);
+        } else {
+          setHasBooked(false);
+        }
+      } catch (e) {
+        setHasBooked(false);
+      }
+    };
+    checkBookings();
+  }, [user, id]);
 
   const handleBooking = async (e) => {
     e.preventDefault();
@@ -218,33 +228,51 @@ function ClinicDetail({ user }) {
             overflow: 'hidden',
             border: '2px solid #e0e0e0'
           }}>
-            <MapContainer
-              center={[clinic.latitude, clinic.longitude]}
-              zoom={15}
-              style={{ height: '100%', width: '100%' }}
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              <Marker position={[clinic.latitude, clinic.longitude]} />
-            </MapContainer>
+            <iframe
+              title="Clinic Location Map"
+              width="100%"
+              height="100%"
+              style={{ border: 0 }}
+              loading="lazy"
+              allowFullScreen
+              referrerPolicy="no-referrer-when-downgrade"
+              src={`https://www.google.com/maps/embed/v1/place?key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY'}&q=${clinic.latitude},${clinic.longitude}&zoom=15`}
+            />
           </div>
           {clinic.location && (
             <p style={{ marginTop: '1rem', color: '#666', fontSize: '0.95rem' }}>
               📍 <strong>{clinic.location}</strong>
             </p>
           )}
+          <a 
+            href={`https://www.google.com/maps/search/?api=1&query=${clinic.latitude},${clinic.longitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-block',
+              marginTop: '0.5rem',
+              color: '#667eea',
+              textDecoration: 'none',
+              fontWeight: '500'
+            }}
+          >
+            Open in Google Maps →
+          </a>
         </div>
       )}
 
       <div className="comments-section" style={{ marginTop: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2>Reviews ({clinic.reviews.length})</h2>
-          {user && !user.is_doctor && (
+          {user && !user.is_doctor && hasBooked && (
             <button onClick={() => setShowReview(true)} className="submit-btn" style={{ width: 'auto' }}>
               Write Review
             </button>
+          )}
+          {user && !user.is_doctor && !hasBooked && (
+            <span style={{ color: '#666', fontSize: '0.9rem' }}>
+              Book a session to write a review.
+            </span>
           )}
         </div>
 

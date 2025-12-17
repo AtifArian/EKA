@@ -92,6 +92,10 @@ def create_article():
     if not doctor:
         return jsonify({'error': 'Doctor profile not found'}), 404
     
+    # Only verified doctors can publish articles
+    if not doctor.is_verified:
+        return jsonify({'error': 'Only verified doctors can publish articles. Please complete your verification.'}), 403
+    
     # Support both JSON and form data
     data = request.get_json(silent=True) or {}
     title = data.get('title') or request.form.get('title')

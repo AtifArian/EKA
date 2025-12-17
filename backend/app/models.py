@@ -33,6 +33,7 @@ class User(db.Model):
     journals = db.relationship('Journal', backref='author', lazy=True, cascade='all, delete-orphan')
     article_likes = db.relationship('ArticleLike', backref='user', lazy=True, cascade='all, delete-orphan')
     article_comments = db.relationship('ArticleComment', backref='user', lazy=True, cascade='all, delete-orphan')
+    article_reads = db.relationship('ArticleRead', backref='user', lazy=True, cascade='all, delete-orphan')
     journal_hearts = db.relationship('JournalHeart', backref='user', lazy=True, cascade='all, delete-orphan')
     journal_comments = db.relationship('JournalComment', backref='user', lazy=True, cascade='all, delete-orphan')
     
@@ -223,6 +224,24 @@ class ArticleComment(db.Model):
             'id': self.id,
             'user': self.user.to_dict(),
             'content': self.content,
+            'created_at': self.created_at.isoformat()
+        }
+
+class ArticleRead(db.Model):
+    """Track when users read articles"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    article_id = db.Column(db.Integer, db.ForeignKey('article.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    article = db.relationship('Article', backref='reads')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'article_id': self.article_id,
+            'article_title': self.article.title if self.article else None,
             'created_at': self.created_at.isoformat()
         }
 
