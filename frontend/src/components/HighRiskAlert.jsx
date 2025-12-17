@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { listThreads, createUserUserThread, postThreadMessage } from '../services/api';
 import { getHighRiskPatients } from '../services/api';
 
 function HighRiskAlert({ user, onChatNow }) {
+  const navigate = useNavigate();
   const [highRiskPatients, setHighRiskPatients] = useState([]);
   const [showAlert, setShowAlert] = useState(false);
   const [currentPatientIndex, setCurrentPatientIndex] = useState(0);
@@ -29,15 +32,36 @@ function HighRiskAlert({ user, onChatNow }) {
   };
 
   const handleChatNow = () => {
+    const patient = highRiskPatients[currentPatientIndex];
     setShowAlert(false);
+    // Open in MyProfile inbox directly
     if (onChatNow) {
-      onChatNow(highRiskPatients[currentPatientIndex]);
+      onChatNow(patient);
     }
+    navigate('/profile');
   };
 
   const handleCall = () => {
     const patient = highRiskPatients[currentPatientIndex];
-    alert(`Call functionality: Contact ${patient.full_name || patient.username} at their registered phone number.`);
+    setShowAlert(false);
+    // Create or reuse a chat thread and send an emergency-call message
+    (async () => {
+      try {
+        const threads = await listThreads();
+        let thread = threads.find(t => t.thread_type === 'user_user' && t.participants.some(p => p.id === patient.id));
+        if (!thread) {
+          thread = await createUserUserThread(patient.id);
+        }
+        const sessionId = `EM-${patient.id}-${Date.now()}`;
+        await postThreadMessage(thread.id, `EMERGENCY_CALL:${sessionId}`);
+        // Open the doctor's call window
+        navigate(`/video-call/${sessionId}`);
+      } catch (e) {
+        // Fallback: go to inbox
+        if (onChatNow) onChatNow(patient);
+        navigate('/profile');
+      }
+    })();
   };
 
   const handleSendHelpTeam = () => {

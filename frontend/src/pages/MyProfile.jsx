@@ -175,7 +175,10 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
   useEffect(() => {
     if (navigateToInbox && user?.is_doctor) {
       setActiveTab('inbox');
-      // Optionally, you can also select/open a thread with this patient
+      // Open the inbox thread with this patient directly
+      if (navigateToInbox.id) {
+        handleOpenChat(navigateToInbox.id);
+      }
       if (setNavigateToInbox) {
         setNavigateToInbox(null);
       }
@@ -2456,6 +2459,22 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
                           "{thread.last_message.content.length > 80 ? thread.last_message.content.slice(0, 80) + '…' : thread.last_message.content}"
                         </div>
                       )}
+                      {thread.last_message && typeof thread.last_message.content === 'string' && thread.last_message.content.startsWith('EMERGENCY_CALL:') && thread.unread_count > 0 && (
+                        <div style={{ marginTop: '0.5rem' }}>
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try { await markThreadRead(thread.id); } catch {}
+                              const sessionId = thread.last_message.content.replace('EMERGENCY_CALL:', '').trim();
+                              navigate(`/video-call/${sessionId}`);
+                            }}
+                            className="submit-btn"
+                            style={{ width: 'auto' }}
+                          >
+                            📞 Join Emergency Call
+                          </button>
+                        </div>
+                      )}
                       {thread.unread_count > 0 && (
                         <div style={{ fontSize: '0.8rem', color: '#7F7FD5', marginTop: '0.3rem' }}>
                           • {thread.unread_count} new
@@ -2516,7 +2535,27 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
                           marginBottom: '0.6rem'
                         }}>
                           <div style={{ fontWeight: 600, color: '#1f2937' }}>{m.sender.username}</div>
-                          <div style={{ color: '#1f2937' }}>{m.content}</div>
+                          {typeof m.content === 'string' && m.content.startsWith('EMERGENCY_CALL:') ? (
+                            <div>
+                              <div style={{ color: '#b30000', fontWeight: 600, marginBottom: '0.4rem' }}>Emergency Call Invitation</div>
+                              <div style={{ color: '#1f2937', marginBottom: '0.6rem' }}>
+                                Your doctor is inviting you to join an emergency session.
+                              </div>
+                              <button
+                                onClick={async () => {
+                                  try { await markThreadRead(selectedThreadId); } catch {}
+                                  const sessionId = m.content.replace('EMERGENCY_CALL:', '').trim();
+                                  navigate(`/video-call/${sessionId}`);
+                                }}
+                                className="submit-btn"
+                                style={{ width: 'auto' }}
+                              >
+                                📞 Join Call
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={{ color: '#1f2937' }}>{m.content}</div>
+                          )}
                         </div>
                       ))}
                     </div>
