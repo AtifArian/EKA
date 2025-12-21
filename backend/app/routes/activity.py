@@ -78,6 +78,7 @@ def get_my_activity():
         
         articles_liked_timeline = group_by_date(articles_liked)
         articles_liked_list = [{'id': al.id, 'article_id': al.article_id, 
+                                'article_title': al.article.title if al.article else None,
                                 'created_at': al.created_at.isoformat()} for al in articles_liked]
         
         # Article comments
@@ -87,6 +88,10 @@ def get_my_activity():
         ).order_by(ArticleComment.created_at).all()
         
         article_comments_timeline = group_by_date(article_comments)
+        article_comments_list = [{'id': ac.id, 'article_id': ac.article_id, 
+                                  'article_title': ac.article.title if ac.article else None,
+                                  'content': ac.content, 'created_at': ac.created_at.isoformat()} 
+                                 for ac in article_comments]
         
         # Summary statistics
         summary = {
@@ -108,6 +113,7 @@ def get_my_activity():
             'articles_liked_timeline': articles_liked_timeline,
             'articles_liked_list': articles_liked_list,
             'article_comments_timeline': article_comments_timeline,
+            'article_comments_list': article_comments_list,
             'date_range': {
                 'start': start_date.date().isoformat(),
                 'end': end_date.date().isoformat()
@@ -182,11 +188,36 @@ def get_patient_activity(patient_id):
         articles_read_timeline = group_by_date(articles_read)
         articles_read_list = [ar.to_dict() for ar in articles_read]
         
+        # Articles liked
+        articles_liked = ArticleLike.query.filter(
+            ArticleLike.user_id == patient_id,
+            ArticleLike.created_at >= start_date
+        ).order_by(ArticleLike.created_at).all()
+        
+        articles_liked_timeline = group_by_date(articles_liked)
+        articles_liked_list = [{'id': al.id, 'article_id': al.article_id, 
+                                'article_title': al.article.title if al.article else None,
+                                'created_at': al.created_at.isoformat()} for al in articles_liked]
+        
+        # Article comments
+        article_comments = ArticleComment.query.filter(
+            ArticleComment.user_id == patient_id,
+            ArticleComment.created_at >= start_date
+        ).order_by(ArticleComment.created_at).all()
+        
+        article_comments_timeline = group_by_date(article_comments)
+        article_comments_list = [{'id': ac.id, 'article_id': ac.article_id, 
+                                  'article_title': ac.article.title if ac.article else None,
+                                  'content': ac.content, 'created_at': ac.created_at.isoformat()} 
+                                 for ac in article_comments]
+        
         # Summary statistics
         summary = {
             'total_mood_entries': len(mood_entries),
             'total_journals': len(journals),
             'total_articles_read': len(articles_read),
+            'total_articles_liked': len(articles_liked),
+            'total_article_comments': len(article_comments),
             'avg_mood_level': sum(m.mood_level for m in mood_entries) / len(mood_entries) if mood_entries else 0
         }
         
@@ -198,6 +229,10 @@ def get_patient_activity(patient_id):
             'journal_list': journal_list,
             'articles_read_timeline': articles_read_timeline,
             'articles_read_list': articles_read_list,
+            'articles_liked_timeline': articles_liked_timeline,
+            'articles_liked_list': articles_liked_list,
+            'article_comments_timeline': article_comments_timeline,
+            'article_comments_list': article_comments_list,
             'date_range': {
                 'start': start_date.date().isoformat(),
                 'end': end_date.date().isoformat()
