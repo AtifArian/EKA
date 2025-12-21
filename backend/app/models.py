@@ -60,6 +60,12 @@ class User(db.Model):
                 path = path[8:]  # Remove 'uploads/' prefix
             profile_picture_url = f'/uploads/{path}'
         
+        # Get verification status if doctor
+        is_verified = False
+        if self.is_doctor:
+            doctor_profile = Doctor.query.filter_by(user_id=self.id).first()
+            is_verified = doctor_profile.is_verified if doctor_profile else False
+        
         return {
             'id': self.id,
             'username': self.username,
@@ -67,6 +73,7 @@ class User(db.Model):
             'full_name': self.full_name,
             'profile_picture': profile_picture_url,
             'is_doctor': self.is_doctor,
+            'is_verified': is_verified,
             'created_at': self.created_at.isoformat()
         }
 
@@ -475,5 +482,42 @@ class Donation(db.Model):
             'message': self.message,
             'is_anonymous': self.is_anonymous,
             'status': self.status,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+class LoginOTP(db.Model):
+    """Store OTP codes for two-factor authentication"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    otp_code = db.Column(db.String(6), nullable=False)
+    device_fingerprint = db.Column(db.String(255), nullable=True)  # Browser/device identifier
+    is_used = db.Column(db.Boolean, default=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='login_otps')
+    
+    def is_valid(self):
+        """Check if OTP is still valid"""
+        return not self.is_used and datetime.utcnow() < self.expires_at
+
+class TrustedDevice(db.Model):
+    """Store trusted devices that don't require 2FA"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    device_fingerprint = db.Column(db.String(255), nullable=False)  # Unique device identifier
+    device_name = db.Column(db.String(255))  # Browser/OS info
+    ip_address = db.Column(db.String(50))
+    last_used = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='trusted_devices')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'device_name': self.device_name,
+            'ip_address': self.ip_address,
+            'last_used': self.last_used.isoformat() if self.last_used else None,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }

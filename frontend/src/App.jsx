@@ -13,6 +13,7 @@ import HighRiskAlert from './components/HighRiskAlert';
 import Home from './pages/Home';
 import Login from './pages/Login1';
 import Signup from './pages/Signup';
+import VerifyOTP from './pages/VerifyOTP';
 import Clinics from './pages/Clinics';
 import ClinicDetail from './pages/ClinicDetail';
 import Articles from './pages/Articles';
@@ -68,6 +69,7 @@ function App() {
             <Route path="/" element={<Home user={user} />} />
             <Route path="/login" element={<Login onLogin={handleLogin} />} />
             <Route path="/signup" element={<Signup onLogin={handleLogin} />} />
+            <Route path="/verify-otp" element={<VerifyOTP onLogin={handleLogin} />} />
             <Route path="/clinics" element={<Clinics />} />
             <Route path="/clinics/:id" element={<ClinicDetail user={user} />} />
             <Route path="/articles" element={<Articles user={user} />} />

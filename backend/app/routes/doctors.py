@@ -289,3 +289,74 @@ def get_high_risk_patients():
             })
     
     return jsonify(high_risk_patients), 200
+
+
+@doctors_bp.route('/pending-verifications', methods=['GET'])
+@jwt_required()
+def get_pending_verifications():
+    """Get all doctors pending verification (admin route)"""
+    try:
+        # Get all doctors with verification documents that are not yet verified
+        pending_doctors = Doctor.query.filter_by(is_verified=False).filter(
+            Doctor.verification_document.isnot(None)
+        ).all()
+        
+        result = []
+        for doctor in pending_doctors:
+            doctor_dict = doctor.to_dict()
+            result.append(doctor_dict)
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        print(f"ERROR in get_pending_verifications: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@doctors_bp.route('/verify/<int:doctor_id>', methods=['POST'])
+@jwt_required()
+def verify_doctor_by_admin(doctor_id):
+    """Approve or reject doctor verification (admin route)"""
+    try:
+        data = request.get_json()
+        approve = data.get('approve', True)
+        
+        doctor = Doctor.query.get(doctor_id)
+        if not doctor:
+            return jsonify({'error': 'Doctor not found'}), 404
+        
+        if approve:
+            doctor.is_verified = True
+            message = 'Doctor verified successfully'
+            
+            # Send notification to doctor
+            notification = Notification(
+                user_id=doctor.user_id,
+                message='Your doctor account has been verified! You can now accept patient bookings.',
+                type='verification'
+            )
+            db.session.add(notification)
+        else:
+            # Reject verification - remove doctor profile
+            user = User.query.get(doctor.user_id)
+            if user:
+                user.is_doctor = False
+            db.session.delete(doctor)
+            message = 'Doctor verification rejected'
+            
+            # Send notification to user
+            notification = Notification(
+                user_id=doctor.user_id,
+                message='Your doctor verification was rejected. Please contact support for more information.',
+                type='verification'
+            )
+            db.session.add(notification)
+        
+        db.session.commit()
+        
+        return jsonify({'message': message}), 200
+        
+    except Exception as e:
+        print(f"ERROR in verify_doctor_by_admin: {str(e)}")
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500

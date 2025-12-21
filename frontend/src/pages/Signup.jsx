@@ -30,16 +30,34 @@ function Signup({ onLogin }) {
     e.preventDefault();
     setError('');
 
+    console.log('\n=== SIGNUP ATTEMPT ===');
+    console.log('Form data:', formData);
+    console.log('Is doctor:', formData.is_doctor);
+    console.log('Has verification file:', !!verificationFile);
+
     if (formData.is_doctor && !verificationFile) {
-      setError('Please upload verification document');
+      console.warn('✗ Doctor signup requires verification file');
+      setError('Please upload verification document (license/certificate)');
       return;
     }
 
     try {
-      const response = await signup(formData);
+      console.log('Calling signup API...');
+      const response = await signup(formData, verificationFile);
+      console.log('✓ Signup successful:', response);
+      
       onLogin(response.user, response.access_token);
+      
+      // Show message if doctor account needs verification
+      if (formData.is_doctor) {
+        alert('Doctor account created successfully! Your account will be verified by our team shortly.');
+      }
+      
+      console.log('✓ Redirecting to home...');
       navigate('/');
     } catch (err) {
+      console.error('✗ Signup error:', err);
+      console.error('Error response:', err.response?.data);
       setError(err.response?.data?.error || 'Signup failed');
     }
   };
@@ -109,13 +127,16 @@ function Signup({ onLogin }) {
 
           {formData.is_doctor && (
             <div className="form-group">
-              <label>Verification Document (License/Certificate)</label>
+              <label>Verification Document (License/Certificate) *</label>
               <input
                 type="file"
                 onChange={handleFileChange}
                 accept="image/*,.pdf"
                 required
               />
+              <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                Upload your medical license or professional certificate. Your account will be verified by our team.
+              </small>
             </div>
           )}
           
