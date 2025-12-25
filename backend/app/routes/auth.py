@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from app.models import db, User, Doctor, LoginOTP, TrustedDevice
+from app.utils.email import send_otp_email, is_valid_email
 from google.oauth2 import id_token
 from google.auth.transport import requests
 import os
@@ -117,9 +118,43 @@ def login():
         
         user = User.query.filter_by(email=data['email']).first()
         
-        if not user or not user.check_password(data['password']):
-            print(f"✗ Invalid credentials for {data.get('email')}")
-            return jsonify({'error': 'Invalid email or password'}), 401
+        # Check if user exists
+        if not user:
+            print(f"✗ User not found: {data.get('email')}")
+            # Generate OTP for non-existing user (to show on website)
+            otp_code = ''.join(random.choices(string.digits, k=6))
+            print(f"Generated OTP for non-existing user: {otp_code}")
+            
+            # Mask email for display (show only first 2-4 chars and domain)
+            email = data.get('email', '')
+            email_parts = email.split('@')
+            if len(email_parts) == 2:
+                # Show first 2-4 characters based on length
+                visible_chars = min(4, max(2, len(email_parts[0]) // 2))
+                masked_email = f"{email_parts[0][:visible_chars]}***@{email_parts[1]}"
+            else:
+                masked_email = email
+            
+            # Create temporary token for OTP verification
+            temp_token = create_access_token(
+                identity=email,  # Use email as identity for non-existing users
+                expires_delta=timedelta(minutes=15),
+                additional_claims={"temp": True, "email_not_found": True}
+            )
+            
+            return jsonify({
+                'requires_2fa': True,
+                'temp_token': temp_token,
+                'otp_code': otp_code,  # Show OTP on website for non-existing users
+                'email_not_found': True,
+                'masked_email': masked_email,  # Add masked email for display
+                'message': f'Verification code sent to {masked_email}'
+            }), 200
+        
+        # Check password for existing user
+        if not user.check_password(data['password']):
+            print(f"✗ Invalid password for {data.get('email')}")
+            return jsonify({'error': 'Invalid password'}), 401
         
         print(f"✓ User authenticated: {user.id} - {user.email}")
         
@@ -187,6 +222,11 @@ def login():
         print(f"User: {user.email}")
         print(f"OTP Code: {otp_code}")
         
+        # Validate email address format
+        if not is_valid_email(user.email):
+            print(f"❌ Invalid email format: {user.email}")
+            return jsonify({'error': 'Invalid email address. Please update your profile with a valid email.'}), 400
+        
         # Delete old unused OTPs for this user
         old_otps_count = LoginOTP.query.filter_by(user_id=user.id, is_used=False).delete()
         if old_otps_count > 0:
@@ -203,9 +243,20 @@ def login():
         db.session.commit()
         print(f"✓ OTP saved to database (expires: {otp.expires_at})")
         
-        # TODO: Send OTP via email (you'll need to configure email service)
-        # For now, we'll print it to console for testing
-        print(f"\n📧 EMAIL SIMULATION: OTP for {user.email}: {otp_code}\n")
+        # Send OTP via email
+        email_success, email_error = send_otp_email(user.email, otp_code, user.full_name or user.username)
+        
+        if not email_success:
+            print(f"❌ Failed to send email: {email_error}")
+            # Delete the OTP we just created since email failed
+            db.session.delete(otp)
+            db.session.commit()
+            return jsonify({
+                'error': f'Failed to send verification code: {email_error}',
+                'details': 'Please check your email address or contact support.'
+            }), 500
+        
+        print(f"✓ Verification email sent successfully to {user.email}")
         
         # Create temporary token (short-lived, only for OTP verification)
         temp_token = create_access_token(
@@ -216,12 +267,22 @@ def login():
         print(f"✓ Temporary token created (expires in 15 min)")
         print(f"=== END LOGIN (2FA REQUIRED) ===\n")
         
-        return jsonify({
+        # Mask email for display (show only first 2 chars and domain)
+        email_parts = user.email.split('@')
+        masked_email = f"{email_parts[0][:2]}***@{email_parts[1]}" if len(email_parts) == 2 else user.email
+        
+        response = {
             'requires_2fa': True,
             'temp_token': temp_token,
-            'message': f'Verification code sent to {user.email}',
-            'otp_for_testing': otp_code  # Remove this in production!
-        }), 200
+            'message': f'Verification code sent to {masked_email}'
+        }
+        
+        # Include OTP in testing/development mode only
+        if os.environ.get('FLASK_ENV') == 'development' or os.environ.get('TESTING_MODE') == 'true':
+            response['otp_for_testing'] = otp_code
+            print(f"🧪 Testing mode: Including OTP in response")
+        
+        return jsonify(response), 200
     
     except Exception as e:
         print(f"\n✗ LOGIN ERROR: {str(e)}")
@@ -246,6 +307,17 @@ def verify_otp():
         
         if not otp_code:
             return jsonify({'error': 'OTP code is required'}), 400
+        
+        # Get JWT claims to check if this is a non-existing user
+        from flask_jwt_extended import get_jwt
+        claims = get_jwt()
+        email_not_found = claims.get('email_not_found', False)
+        
+        if email_not_found:
+            # This is a non-existing user trying to verify
+            email = get_jwt_identity()
+            print(f"❌ Email not found in system: {email}")
+            return jsonify({'error': 'Email not found. Please sign up first.'}), 404
         
         current_user_id = int(get_jwt_identity())
         user = User.query.get(current_user_id)

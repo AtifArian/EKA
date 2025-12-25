@@ -13,12 +13,18 @@ function VerifyOTP({ onLogin }) {
   const tempToken = location.state?.tempToken;
   const message = location.state?.message;
   const otpForTesting = location.state?.otpForTesting; // For testing only
+  const otpCode = location.state?.otpCode; // OTP shown on website for non-existing users
+  const emailNotFound = location.state?.emailNotFound;
+  const maskedEmail = location.state?.maskedEmail; // Masked email for display
 
   useEffect(() => {
     console.log('\n=== OTP VERIFICATION PAGE LOADED ===');
     console.log('Has temp token:', !!tempToken);
     console.log('Message:', message);
     console.log('OTP for testing:', otpForTesting);
+    console.log('OTP code (non-existing user):', otpCode);
+    console.log('Email not found:', emailNotFound);
+    console.log('Masked email:', maskedEmail);
     
     if (!tempToken) {
       console.warn('✗ No temp token found - redirecting to login');
@@ -26,7 +32,7 @@ function VerifyOTP({ onLogin }) {
     } else {
       console.log('✓ Ready for OTP verification');
     }
-  }, [tempToken, navigate, message, otpForTesting]);
+  }, [tempToken, navigate, message, otpForTesting, otpCode, emailNotFound, maskedEmail]);
 
   // Generate device fingerprint
   const getDeviceFingerprint = () => {
@@ -111,7 +117,16 @@ function VerifyOTP({ onLogin }) {
     } catch (err) {
       console.error('✗ OTP Verification error:', err);
       console.error('Error response:', err.response?.data);
-      setError(err.response?.data?.error || 'Verification failed');
+      
+      // If email not found, redirect to signup
+      if (err.response?.status === 404 && err.response?.data?.error?.includes('not found')) {
+        setError('Email not found. Redirecting to sign up...');
+        setTimeout(() => {
+          navigate('/signup');
+        }, 2000);
+      } else {
+        setError(err.response?.data?.error || 'Verification failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -133,12 +148,57 @@ function VerifyOTP({ onLogin }) {
       padding: '2rem'
     }}>
       <div className="form-container" style={{ maxWidth: '450px', width: '100%' }}>
+        {/* Show OTP prominently at the top for non-existing users */}
+        {emailNotFound && otpCode && (
+          <div style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            padding: '1.5rem',
+            borderRadius: '0.75rem',
+            marginBottom: '1.5rem',
+            textAlign: 'center',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+          }}>
+            <div style={{ fontSize: '0.9rem', marginBottom: '0.5rem', opacity: '0.9' }}>
+              Verification code sent to:
+            </div>
+            <div style={{ 
+              fontSize: '1.1rem', 
+              fontWeight: 'bold',
+              marginBottom: '1rem',
+              padding: '0.5rem',
+              background: 'rgba(255, 255, 255, 0.15)',
+              borderRadius: '0.5rem'
+            }}>
+              {maskedEmail || 'your email'}
+            </div>
+            <div style={{ fontSize: '0.85rem', marginBottom: '0.5rem', opacity: '0.9' }}>
+              Your Verification Code:
+            </div>
+            <div style={{ 
+              fontSize: '2.5rem', 
+              fontWeight: 'bold', 
+              letterSpacing: '0.5rem',
+              fontFamily: 'monospace',
+              padding: '0.5rem',
+              background: 'rgba(255, 255, 255, 0.2)',
+              borderRadius: '0.5rem',
+              marginTop: '0.5rem'
+            }}>
+              {otpCode}
+            </div>
+            <div style={{ fontSize: '0.85rem', marginTop: '0.75rem', opacity: '0.9' }}>
+              Please enter this code below to continue
+            </div>
+          </div>
+        )}
+
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <h2>Two-Factor Authentication</h2>
           <p style={{ color: '#666', marginTop: '0.5rem' }}>
             {message || 'Enter the verification code sent to your email'}
           </p>
-          {otpForTesting && (
+          {otpForTesting && !emailNotFound && (
             <p style={{ 
               background: '#fff3cd', 
               color: '#856404', 

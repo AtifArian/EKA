@@ -20,37 +20,316 @@ export const ActivityTabContent = ({ activityData }) => {
           mood_timeline: moodData, journal_timeline, articles_read_timeline, 
           articles_liked_timeline, article_comments_timeline, article_comments_list } = activityData;
 
-  // Simple Line Chart Component
-  const LineChart = ({ data, label, color }) => {
-    if (!data || data.length === 0) return <p>No data available</p>;
+  // Enhanced User-Friendly Line Chart Component with Tooltips and Labels
+  const LineChart = ({ data, label, color, yAxisLabel, isMoodChart = false }) => {
+    const [hoveredPoint, setHoveredPoint] = React.useState(null);
+    
+    if (!data || data.length === 0) {
+      return (
+        <div style={{ 
+          marginBottom: '2rem', 
+          padding: '2rem', 
+          textAlign: 'center',
+          background: 'rgba(255, 255, 255, 0.5)',
+          borderRadius: '10px',
+          color: '#6b7280'
+        }}>
+          <p>No data available for this period</p>
+        </div>
+      );
+    }
     
     const maxValue = Math.max(...data.map(d => d.value), 1);
-    const width = 600;
-    const height = 200;
-    const padding = 40;
+    const minValue = Math.min(...data.map(d => d.value), 0);
+    const width = 650;
+    const height = 280;
+    const paddingLeft = 60;
+    const paddingRight = 30;
+    const paddingTop = 30;
+    const paddingBottom = 50;
+    
+    // Calculate realistic Y-axis scale with proper bounds
+    let yAxisMin, yAxisMax, yAxisSteps;
+    if (isMoodChart) {
+      yAxisMin = 0;
+      yAxisMax = 5;
+      yAxisSteps = [0, 1, 2, 3, 4, 5];
+    } else {
+      // Add 20% padding above and below for realistic bounds
+      const range = maxValue - minValue;
+      const padding = Math.max(range * 0.2, 1); // At least 1 unit padding
+      yAxisMin = Math.max(0, Math.floor(minValue - padding));
+      yAxisMax = Math.ceil(maxValue + padding);
+      
+      // Create 6 evenly spaced steps
+      const step = (yAxisMax - yAxisMin) / 5;
+      yAxisSteps = Array.from({length: 6}, (_, i) => Math.round(yAxisMin + (step * i)));
+    }
     
     const points = data.map((d, i) => {
-      const x = padding + (i / (data.length - 1 || 1)) * (width - 2 * padding);
-      const y = height - padding - (d.value / maxValue) * (height - 2 * padding);
+      const x = paddingLeft + (i / (data.length - 1 || 1)) * (width - paddingLeft - paddingRight);
+      const y = height - paddingBottom - ((d.value - yAxisMin) / (yAxisMax - yAxisMin)) * (height - paddingTop - paddingBottom);
       return `${x},${y}`;
     }).join(' ');
     
+    // Format day number for display (Day 1, Day 2, etc.)
+    const formatDayLabel = (index, totalDays) => {
+      // Show days counting from 1 (oldest) to totalDays (most recent)
+      return `Day ${index + 1}`;
+    };
+    
+    // Get mood emoji and label
+    const getMoodInfo = (value) => {
+      if (value >= 4.5) return { emoji: '😄', label: 'Great' };
+      if (value >= 3.5) return { emoji: '🙂', label: 'Good' };
+      if (value >= 2.5) return { emoji: '😐', label: 'Okay' };
+      if (value >= 1.5) return { emoji: '😟', label: 'Low' };
+      return { emoji: '😢', label: 'Very Low' };
+    };
+    
     return (
-      <div style={{ marginBottom: '2rem' }}>
-        <h4 style={{ marginBottom: '1rem', color: '#1f2937' }}>{label}</h4>
-        <svg width={width} height={height} style={{ background: 'rgba(255, 255, 255, 0.5)', borderRadius: '10px' }}>
-          <polyline
-            points={points}
-            fill="none"
-            stroke={color}
-            strokeWidth="3"
-          />
-          {data.map((d, i) => {
-            const x = padding + (i / (data.length - 1 || 1)) * (width - 2 * padding);
-            const y = height - padding - (d.value / maxValue) * (height - 2 * padding);
-            return <circle key={i} cx={x} cy={y} r="4" fill={color} />;
-          })}
-        </svg>
+      <div style={{ marginBottom: '2.5rem', position: 'relative' }}>
+        <h4 style={{ 
+          marginBottom: '1rem', 
+          color: '#1f2937', 
+          fontSize: '1.1rem',
+          fontWeight: 'bold'
+        }}>
+          {label}
+        </h4>
+        
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          <svg 
+            width={width} 
+            height={height} 
+            style={{ 
+              background: 'rgba(255, 255, 255, 0.7)', 
+              borderRadius: '10px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
+            }}
+          >
+            {/* Grid lines */}
+            {yAxisSteps.map((step, i) => {
+              const y = height - paddingBottom - ((step - yAxisMin) / (yAxisMax - yAxisMin)) * (height - paddingTop - paddingBottom);
+              return (
+                <g key={i}>
+                  <line
+                    x1={paddingLeft}
+                    y1={y}
+                    x2={width - paddingRight}
+                    y2={y}
+                    stroke="#e5e7eb"
+                    strokeWidth="1"
+                    strokeDasharray="4,4"
+                  />
+                  {/* Y-axis labels */}
+                  <text
+                    x={paddingLeft - 10}
+                    y={y + 4}
+                    textAnchor="end"
+                    fontSize="12"
+                    fill="#6b7280"
+                    fontWeight="500"
+                  >
+                    {isMoodChart && step > 0 ? `${step} ${getMoodInfo(step).emoji}` : step}
+                  </text>
+                </g>
+              );
+            })}
+            
+            {/* X-axis line */}
+            <line
+              x1={paddingLeft}
+              y1={height - paddingBottom}
+              x2={width - paddingRight}
+              y2={height - paddingBottom}
+              stroke="#9ca3af"
+              strokeWidth="2"
+            />
+            
+            {/* Y-axis line */}
+            <line
+              x1={paddingLeft}
+              y1={paddingTop}
+              x2={paddingLeft}
+              y2={height - paddingBottom}
+              stroke="#9ca3af"
+              strokeWidth="2"
+            />
+            
+            {/* Area fill under the line */}
+            <polygon
+              points={`${paddingLeft},${height - paddingBottom} ${points} ${width - paddingRight},${height - paddingBottom}`}
+              fill={color}
+              opacity="0.1"
+            />
+            
+            {/* Line */}
+            <polyline
+              points={points}
+              fill="none"
+              stroke={color}
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            
+            {/* Data points with interactivity */}
+            {data.map((d, i) => {
+              const x = paddingLeft + (i / (data.length - 1 || 1)) * (width - paddingLeft - paddingRight);
+              const y = height - paddingBottom - ((d.value - yAxisMin) / (yAxisMax - yAxisMin)) * (height - paddingTop - paddingBottom);
+              const isHovered = hoveredPoint === i;
+              
+              return (
+                <g key={i}>
+                  {/* Larger invisible hit area for better hover */}
+                  <circle 
+                    cx={x} 
+                    cy={y} 
+                    r="12" 
+                    fill="transparent"
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={() => setHoveredPoint(i)}
+                    onMouseLeave={() => setHoveredPoint(null)}
+                  />
+                  {/* Visible point */}
+                  <circle 
+                    cx={x} 
+                    cy={y} 
+                    r={isHovered ? "6" : "5"} 
+                    fill={color}
+                    stroke="white"
+                    strokeWidth="2"
+                    style={{ 
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      filter: isHovered ? 'drop-shadow(0 0 4px rgba(0,0,0,0.3))' : 'none'
+                    }}
+                    onMouseEnter={() => setHoveredPoint(i)}
+                    onMouseLeave={() => setHoveredPoint(null)}
+                  />
+                  
+                  {/* X-axis day labels (show every few points to avoid crowding) */}
+                  {(i % Math.ceil(data.length / 8) === 0 || i === data.length - 1) && (
+                    <text
+                      x={x}
+                      y={height - paddingBottom + 20}
+                      textAnchor="middle"
+                      fontSize="11"
+                      fill="#6b7280"
+                      fontWeight="500"
+                    >
+                      {formatDayLabel(i, data.length)}
+                    </text>
+                  )}
+                  
+                  {/* Tooltip on hover */}
+                  {isHovered && (
+                    <g>
+                      <rect
+                        x={x - 55}
+                        y={y - 60}
+                        width="110"
+                        height={isMoodChart ? "52" : "44"}
+                        fill="white"
+                        stroke={color}
+                        strokeWidth="2"
+                        rx="8"
+                        style={{
+                          filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))'
+                        }}
+                      />
+                      <text
+                        x={x}
+                        y={y - 38}
+                        textAnchor="middle"
+                        fontSize="11"
+                        fill="#6b7280"
+                        fontWeight="600"
+                      >
+                        {formatDayLabel(i, data.length)}
+                      </text>
+                      <text
+                        x={x}
+                        y={y - 22}
+                        textAnchor="middle"
+                        fontSize="16"
+                        fill={color}
+                        fontWeight="bold"
+                      >
+                        {isMoodChart ? `${d.value.toFixed(1)} ${getMoodInfo(d.value).emoji}` : d.value}
+                      </text>
+                      {isMoodChart && (
+                        <text
+                          x={x}
+                          y={y - 8}
+                          textAnchor="middle"
+                          fontSize="10"
+                          fill="#6b7280"
+                        >
+                          {getMoodInfo(d.value).label}
+                        </text>
+                      )}
+                    </g>
+                  )}
+                </g>
+              );
+            })}
+            
+            {/* Y-axis label */}
+            <text
+              x={-height / 2}
+              y={20}
+              textAnchor="middle"
+              fontSize="13"
+              fill="#374151"
+              fontWeight="600"
+              transform={`rotate(-90)`}
+            >
+              {yAxisLabel || 'Value'}
+            </text>
+            
+            {/* X-axis label */}
+            <text
+              x={width / 2}
+              y={height - 10}
+              textAnchor="middle"
+              fontSize="13"
+              fill="#374151"
+              fontWeight="600"
+            >
+              Days (Last {data.length} Days)
+            </text>
+          </svg>
+          
+          {/* Legend */}
+          <div style={{
+            marginTop: '0.75rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem',
+            fontSize: '0.85rem',
+            color: '#6b7280'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{
+                width: '20px',
+                height: '3px',
+                background: color,
+                borderRadius: '2px'
+              }}></div>
+              <span>{data.length} data points</span>
+            </div>
+            <div>
+              Range: {minValue.toFixed(1)} - {maxValue.toFixed(1)} | Y-axis: {yAxisMin} - {yAxisMax}
+            </div>
+            {isMoodChart && (
+              <div style={{ fontStyle: 'italic' }}>
+                💡 Hover over points for details
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     );
   };
@@ -61,14 +340,42 @@ export const ActivityTabContent = ({ activityData }) => {
     value: m.mood_level
   })) || [];
 
-  // Prepare timeline data for charts
+  // Get all unique dates from all timelines to ensure consistency
+  const getAllDates = () => {
+    const allDates = new Set();
+    
+    // Add mood dates
+    moodData?.forEach(m => allDates.add(m.date));
+    
+    // Add journal dates
+    Object.keys(journal_timeline || {}).forEach(date => allDates.add(date));
+    
+    // Add articles read dates
+    Object.keys(articles_read_timeline || {}).forEach(date => allDates.add(date));
+    
+    // Sort dates
+    return Array.from(allDates).sort();
+  };
+
+  const allDates = getAllDates();
+
+  // Prepare timeline data for charts with consistent date range
   const prepareTimelineData = (timeline) => {
-    const dates = Object.keys(timeline).sort();
-    return dates.map(date => ({
+    // Use all dates to ensure consistency across all graphs
+    return allDates.map(date => ({
       date,
-      value: timeline[date]
+      value: timeline[date] || 0  // Fill with 0 if no data for that date
     }));
   };
+
+  // Update mood chart data to match all dates
+  const consistentMoodData = allDates.map(date => {
+    const moodEntry = moodData?.find(m => m.date === date);
+    return {
+      date,
+      value: moodEntry ? moodEntry.mood_level : 0
+    };
+  }).filter(d => d.value > 0); // Only include days with actual mood data
 
   return (
     <div>
@@ -389,30 +696,34 @@ export const ActivityTabContent = ({ activityData }) => {
         boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
       }}>
         <h3 style={{ marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937' }}>
-          📈 Activity Trends (Last 30 Days)
+          📈 Activity Trends (Last {allDates.length} Days)
         </h3>
         
-        {moodChartData.length > 0 && (
+        {consistentMoodData.length > 0 && (
           <LineChart 
-            data={moodChartData} 
-            label="Mood Levels Over Time" 
+            data={consistentMoodData} 
+            label={`Mood Levels Over Time (${allDates.length} Days)`}
             color="#667eea" 
+            yAxisLabel="Mood Level (1-5)"
+            isMoodChart={true}
           />
         )}
         
         {Object.keys(journal_timeline).length > 0 && (
           <LineChart 
             data={prepareTimelineData(journal_timeline)} 
-            label="Journal Entries Per Day" 
+            label={`Journal Entries Per Day (${allDates.length} Days)`}
             color="#f093fb" 
+            yAxisLabel="Number of Entries"
           />
         )}
         
         {Object.keys(articles_read_timeline).length > 0 && (
           <LineChart 
             data={prepareTimelineData(articles_read_timeline)} 
-            label="Articles Read Per Day" 
+            label={`Articles Read Per Day (${allDates.length} Days)`}
             color="#4facfe" 
+            yAxisLabel="Number of Articles"
           />
         )}
       </div>

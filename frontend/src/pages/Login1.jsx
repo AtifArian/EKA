@@ -33,13 +33,19 @@ function Login({ onLogin }) {
         console.log('✓ 2FA Required - Redirecting to OTP page');
         console.log('Temp token received:', response.temp_token ? 'Yes' : 'No');
         console.log('OTP for testing:', response.otp_for_testing);
+        console.log('Email not found:', response.email_not_found);
+        console.log('OTP code (for non-existing user):', response.otp_code);
+        console.log('Masked email:', response.masked_email);
         
         // Redirect to OTP verification page
         navigate('/verify-otp', {
           state: {
             tempToken: response.temp_token,
             message: response.message,
-            otpForTesting: response.otp_for_testing // For testing only
+            otpForTesting: response.otp_for_testing, // For testing only
+            otpCode: response.otp_code, // OTP shown on website for non-existing users
+            emailNotFound: response.email_not_found,
+            maskedEmail: response.masked_email // Pass masked email
           }
         });
         return;
