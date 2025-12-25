@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 export const ActivityTabContent = ({ activityData }) => {
   const navigate = useNavigate();
   const [showDetailView, setShowDetailView] = useState(null); // 'journals', 'articles_read', 'articles_liked', 'comments'
+  const [selectedDays, setSelectedDays] = useState(30); // Default to 30 days
 
   if (!activityData) {
     return (
@@ -340,42 +341,44 @@ export const ActivityTabContent = ({ activityData }) => {
     value: m.mood_level
   })) || [];
 
-  // Get all unique dates from all timelines to ensure consistency
-  const getAllDates = () => {
-    const allDates = new Set();
+  // Generate full date range for selected number of days
+  const generateDateRange = (numDays) => {
+    const dates = [];
+    const today = new Date();
     
-    // Add mood dates
-    moodData?.forEach(m => allDates.add(m.date));
+    for (let i = numDays - 1; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+      dates.push(dateStr);
+    }
     
-    // Add journal dates
-    Object.keys(journal_timeline || {}).forEach(date => allDates.add(date));
-    
-    // Add articles read dates
-    Object.keys(articles_read_timeline || {}).forEach(date => allDates.add(date));
-    
-    // Sort dates
-    return Array.from(allDates).sort();
+    return dates;
   };
 
-  const allDates = getAllDates();
+  // Get full date range based on selected days
+  const allDates = generateDateRange(selectedDays);
 
-  // Prepare timeline data for charts with consistent date range
+  // Prepare timeline data for charts with full date range (including zeros)
   const prepareTimelineData = (timeline) => {
-    // Use all dates to ensure consistency across all graphs
     return allDates.map(date => ({
       date,
       value: timeline[date] || 0  // Fill with 0 if no data for that date
     }));
   };
 
-  // Update mood chart data to match all dates
-  const consistentMoodData = allDates.map(date => {
-    const moodEntry = moodData?.find(m => m.date === date);
-    return {
-      date,
-      value: moodEntry ? moodEntry.mood_level : 0
-    };
-  }).filter(d => d.value > 0); // Only include days with actual mood data
+  // Prepare mood data to match full date range (same as other graphs for consistency)
+  const prepareMoodTimelineData = () => {
+    return allDates.map(date => {
+      const moodEntry = moodData?.find(m => m.date === date);
+      return {
+        date,
+        value: moodEntry ? moodEntry.mood_level : 0  // Use 0 for missing mood data (same as other graphs)
+      };
+    });
+  };
+
+  const consistentMoodData = prepareMoodTimelineData();
 
   return (
     <div>
@@ -695,33 +698,83 @@ export const ActivityTabContent = ({ activityData }) => {
         marginBottom: '2rem',
         boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
       }}>
-        <h3 style={{ marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937' }}>
-          📈 Activity Trends (Last {allDates.length} Days)
-        </h3>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          marginBottom: '1.5rem',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}>
+          <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>
+            📈 Activity Trends (Last {selectedDays} Days)
+          </h3>
+          
+          {/* Day Range Selector */}
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.9rem', color: '#6b7280', fontWeight: '500' }}>
+              View:
+            </span>
+            {[7, 15, 30].map(days => (
+              <button
+                key={days}
+                onClick={() => setSelectedDays(days)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '8px',
+                  border: selectedDays === days ? '2px solid #667eea' : '2px solid transparent',
+                  background: selectedDays === days 
+                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                    : 'rgba(255, 255, 255, 0.5)',
+                  color: selectedDays === days ? 'white' : '#1f2937',
+                  fontWeight: selectedDays === days ? 'bold' : '600',
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: selectedDays === days 
+                    ? '0 4px 12px rgba(102, 126, 234, 0.4)' 
+                    : '0 2px 4px rgba(0, 0, 0, 0.1)'
+                }}
+                onMouseOver={(e) => {
+                  if (selectedDays !== days) {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.8)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (selectedDays !== days) {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.5)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }
+                }}
+              >
+                {days} Days
+              </button>
+            ))}
+          </div>
+        </div>
         
-        {consistentMoodData.length > 0 && (
-          <LineChart 
-            data={consistentMoodData} 
-            label={`Mood Levels Over Time (${allDates.length} Days)`}
-            color="#667eea" 
-            yAxisLabel="Mood Level (1-5)"
-            isMoodChart={true}
-          />
-        )}
+        <LineChart 
+          data={consistentMoodData} 
+          label={`Mood Levels Over Time (${selectedDays} Days)`}
+          color="#667eea" 
+          yAxisLabel="Mood Level (1-5)"
+          isMoodChart={true}
+        />
         
-        {Object.keys(journal_timeline).length > 0 && (
+        {(Object.keys(journal_timeline).length > 0 || selectedDays > 0) && (
           <LineChart 
             data={prepareTimelineData(journal_timeline)} 
-            label={`Journal Entries Per Day (${allDates.length} Days)`}
+            label={`Journal Entries Per Day (${selectedDays} Days)`}
             color="#f093fb" 
             yAxisLabel="Number of Entries"
           />
         )}
         
-        {Object.keys(articles_read_timeline).length > 0 && (
+        {(Object.keys(articles_read_timeline).length > 0 || selectedDays > 0) && (
           <LineChart 
             data={prepareTimelineData(articles_read_timeline)} 
-            label={`Articles Read Per Day (${allDates.length} Days)`}
+            label={`Articles Read Per Day (${selectedDays} Days)`}
             color="#4facfe" 
             yAxisLabel="Number of Articles"
           />
