@@ -4,10 +4,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-export const ActivityTabContent = ({ activityData }) => {
+export const ActivityTabContent = ({ activityData, onRefresh }) => {
   const navigate = useNavigate();
   const [showDetailView, setShowDetailView] = useState(null); // 'journals', 'articles_read', 'articles_liked', 'comments'
-  const [selectedDays, setSelectedDays] = useState(30); // Default to 30 days
 
   if (!activityData) {
     return (
@@ -18,11 +17,15 @@ export const ActivityTabContent = ({ activityData }) => {
   }
 
   const { summary, mood_timeline, journal_list, articles_read_list, articles_liked_list, 
-          mood_timeline: moodData, journal_timeline, articles_read_timeline, 
-          articles_liked_timeline, article_comments_timeline, article_comments_list } = activityData;
+          journal_timeline, articles_read_timeline, 
+          articles_liked_timeline, article_comments_timeline, article_comments_list, 
+          period_type = 'days', time_period = '30' } = activityData;
+
+  // Use mood_timeline as moodData
+  const moodData = mood_timeline;
 
   // Enhanced User-Friendly Line Chart Component with Tooltips and Labels
-  const LineChart = ({ data, label, color, yAxisLabel, isMoodChart = false }) => {
+  const LineChart = ({ data, label, color, yAxisLabel, isMoodChart = false, isYearView = false }) => {
     const [hoveredPoint, setHoveredPoint] = React.useState(null);
     
     if (!data || data.length === 0) {
@@ -47,7 +50,7 @@ export const ActivityTabContent = ({ activityData }) => {
     const paddingLeft = 60;
     const paddingRight = 30;
     const paddingTop = 30;
-    const paddingBottom = 50;
+    const paddingBottom = 70;  // Increased for rotated labels
     
     // Calculate realistic Y-axis scale with proper bounds
     let yAxisMin, yAxisMax, yAxisSteps;
@@ -73,10 +76,15 @@ export const ActivityTabContent = ({ activityData }) => {
       return `${x},${y}`;
     }).join(' ');
     
-    // Format day number for display (Day 1, Day 2, etc.)
-    const formatDayLabel = (index, totalDays) => {
-      // Show days counting from 1 (oldest) to totalDays (most recent)
-      return `Day ${index + 1}`;
+    // Format day/month label for display
+    const formatLabel = (index, totalPoints, dataPoint) => {
+      if (dataPoint.month) {
+        // For year view or all time, show month labels (e.g., "January" or "Jan 2024")
+        return dataPoint.month;
+      } else {
+        // For days view, show day numbers
+        return `Day ${index + 1}`;
+      }
     };
     
     // Get mood emoji and label
@@ -210,19 +218,31 @@ export const ActivityTabContent = ({ activityData }) => {
                     onMouseLeave={() => setHoveredPoint(null)}
                   />
                   
-                  {/* X-axis day labels (show every few points to avoid crowding) */}
-                  {(i % Math.ceil(data.length / 8) === 0 || i === data.length - 1) && (
+                  {/* Show mood emoji on data point for mood charts in year/all-time views */}
+                  {isMoodChart && isYearView && d.value > 0 && (
                     <text
                       x={x}
-                      y={height - paddingBottom + 20}
+                      y={y - 15}
                       textAnchor="middle"
-                      fontSize="11"
-                      fill="#6b7280"
-                      fontWeight="500"
+                      fontSize="16"
+                      style={{ pointerEvents: 'none' }}
                     >
-                      {formatDayLabel(i, data.length)}
+                      {getMoodInfo(d.value).emoji}
                     </text>
                   )}
+                  
+                  {/* X-axis labels - show ALL for year/all-time views */}
+                  <text
+                    x={x}
+                    y={height - paddingBottom + 25}
+                    textAnchor="end"
+                    fontSize="9"
+                    fill="#374151"
+                    fontWeight="600"
+                    transform={`rotate(-45, ${x}, ${height - paddingBottom + 25})`}
+                  >
+                    {d.month || `Day ${i + 1}`}
+                  </text>
                   
                   {/* Tooltip on hover */}
                   {isHovered && (
@@ -248,7 +268,7 @@ export const ActivityTabContent = ({ activityData }) => {
                         fill="#6b7280"
                         fontWeight="600"
                       >
-                        {formatDayLabel(i, data.length)}
+                        {formatLabel(i, data.length, d)}
                       </text>
                       <text
                         x={x}
@@ -299,7 +319,7 @@ export const ActivityTabContent = ({ activityData }) => {
               fill="#374151"
               fontWeight="600"
             >
-              Days (Last {data.length} Days)
+              {isYearView || period_type === 'all' ? 'Months' : `Days (Last ${data.length} Days)`}
             </text>
           </svg>
           
@@ -335,50 +355,206 @@ export const ActivityTabContent = ({ activityData }) => {
     );
   };
 
-  // Prepare mood chart data
-  const moodChartData = moodData?.map(m => ({
-    date: m.date,
-    value: m.mood_level
-  })) || [];
-
-  // Generate full date range for selected number of days
-  const generateDateRange = (numDays) => {
-    const dates = [];
-    const today = new Date();
-    
-    for (let i = numDays - 1; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0]; // Format: YYYY-MM-DD
-      dates.push(dateStr);
+  // Generate date range or months based on period type
+  const generateDateRange = (periodType, timePeriod) => {
+    if (periodType === 'year') {
+      // For year view, generate months with year (e.g., "Jan 2024", "Feb 2024")
+      const year = timePeriod; // e.g., "2024" or "2025"
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return months.map(month => `${month} ${year}`);
+    } else if (periodType === 'all') {
+      // For all time, generate ALL months from earliest data to now
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth(); // 0-11
+      
+      // Start from earliest year that might have data (2024 or earlier)
+      const startYear = 2024;
+      const allMonths = [];
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      
+      for (let year = startYear; year <= currentYear; year++) {
+        const startMonth = (year === startYear) ? 0 : 0; // Start from January
+        const endMonth = (year === currentYear) ? currentMonth : 11; // End at current month or December
+        
+        for (let month = startMonth; month <= endMonth; month++) {
+          allMonths.push(`${monthNames[month]} ${year}`);
+        }
+      }
+      
+      return allMonths;
+    } else {
+      // For days view
+      const dates = [];
+      const today = new Date();
+      const numDays = parseInt(timePeriod) || 30;
+      
+      for (let i = numDays - 1; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        dates.push(dateStr);
+      }
+      
+      return dates;
     }
-    
-    return dates;
   };
 
-  // Get full date range based on selected days
-  const allDates = generateDateRange(selectedDays);
+  // Get date range based on period type
+  const allDatesOrMonths = generateDateRange(period_type, time_period);
 
-  // Prepare timeline data for charts with full date range (including zeros)
+  // Prepare timeline data for charts
   const prepareTimelineData = (timeline) => {
-    return allDates.map(date => ({
-      date,
-      value: timeline[date] || 0  // Fill with 0 if no data for that date
-    }));
+    if (period_type === 'year') {
+      // Group by month for year view (with year in label like "Jan 2024")
+      const monthCounts = {};
+      allDatesOrMonths.forEach(month => {
+        monthCounts[month] = 0;
+      });
+      
+      Object.keys(timeline).forEach(date => {
+        const dateObj = new Date(date);
+        // Format as "MMM YYYY" (Jan 2024, Feb 2024, etc.)
+        const month = dateObj.toLocaleDateString('en-US', { month: 'short' });
+        const year = dateObj.getFullYear();
+        const monthLabel = `${month} ${year}`;
+        if (monthCounts[monthLabel] !== undefined) {
+          monthCounts[monthLabel] += timeline[date];
+        }
+      });
+      
+      return allDatesOrMonths.map(month => ({
+        date: month,
+        value: monthCounts[month],
+        month: month
+      }));
+    } else if (period_type === 'all') {
+      // Group by month for all time view - fill ALL months from 2024 to now
+      const monthCounts = {};
+      
+      // Initialize all months with 0
+      allDatesOrMonths.forEach(month => {
+        monthCounts[month] = 0;
+      });
+      
+      // Fill in actual data
+      Object.keys(timeline).forEach(date => {
+        const dateObj = new Date(date);
+        const month = dateObj.toLocaleDateString('en-US', { month: 'short' });
+        const year = dateObj.getFullYear();
+        const monthLabel = `${month} ${year}`;
+        if (monthCounts[monthLabel] !== undefined) {
+          monthCounts[monthLabel] += timeline[date];
+        }
+      });
+      
+      // Return all months in order
+      return allDatesOrMonths.map(month => ({
+        date: month,
+        value: monthCounts[month],
+        month: month
+      }));
+    } else {
+      // For days view, fill missing dates with zeros
+      return allDatesOrMonths.map(date => ({
+        date,
+        value: timeline[date] || 0
+      }));
+    }
   };
 
-  // Prepare mood data to match full date range (same as other graphs for consistency)
+  // Prepare mood data
   const prepareMoodTimelineData = () => {
-    return allDates.map(date => {
-      const moodEntry = moodData?.find(m => m.date === date);
-      return {
-        date,
-        value: moodEntry ? moodEntry.mood_level : 0  // Use 0 for missing mood data (same as other graphs)
-      };
-    });
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const getMonthLabelFromEntry = (entry) => {
+      if (!entry) return null;
+      if (entry.month) return entry.month; // Backend-supplied label
+      if (entry.year_month) {
+        const [year, monthNum] = entry.year_month.split('-');
+        const monthIndex = parseInt(monthNum, 10) - 1;
+        if (monthIndex >= 0 && monthIndex < 12) {
+          return `${monthNames[monthIndex]} ${year}`;
+        }
+      }
+
+      const rawDate = entry.created_at || entry.date;
+      if (!rawDate) return null;
+      const date = new Date(rawDate);
+      if (Number.isNaN(date.getTime())) return null;
+      const month = date.toLocaleDateString('en-US', { month: 'short' });
+      const year = date.getFullYear();
+      return `${month} ${year}`;
+    };
+
+    if (period_type === 'year') {
+      // Group mood by month for year view (average mood per month with year in label)
+      const monthMoods = {};
+      const monthCounts = {};
+      
+      allDatesOrMonths.forEach(month => {
+        monthMoods[month] = 0;
+        monthCounts[month] = 0;
+      });
+      
+      moodData?.forEach(m => {
+        const monthLabel = getMonthLabelFromEntry(m);
+        if (monthMoods[monthLabel] !== undefined) {
+          monthMoods[monthLabel] += m.mood_level;
+          monthCounts[monthLabel] += 1;
+        }
+      });
+      
+      return allDatesOrMonths.map(month => ({
+        date: month,
+        value: monthCounts[month] > 0 ? monthMoods[month] / monthCounts[month] : 0,
+        month: month
+      }));
+    } else if (period_type === 'all') {
+      // Group mood by month for all time view - fill ALL months from 2024 to now
+      const monthMoods = {};
+      const monthCounts = {};
+      
+      // Initialize all months with 0
+      allDatesOrMonths.forEach(month => {
+        monthMoods[month] = 0;
+        monthCounts[month] = 0;
+      });
+      
+      // Fill in actual data
+      moodData?.forEach(m => {
+        const monthLabel = getMonthLabelFromEntry(m);
+        if (monthMoods[monthLabel] !== undefined) {
+          monthMoods[monthLabel] += m.mood_level;
+          monthCounts[monthLabel] += 1;
+        }
+      });
+      
+      // Return all months with averages
+      return allDatesOrMonths.map(month => ({
+        date: month,
+        value: monthCounts[month] > 0 ? monthMoods[month] / monthCounts[month] : 0,
+        month: month
+      }));
+    } else {
+      // For days view, fill missing dates with zeros
+      return allDatesOrMonths.map(date => {
+        const moodEntry = moodData?.find(m => m.date === date);
+        return {
+          date,
+          value: moodEntry ? moodEntry.mood_level : 0
+        };
+      });
+    }
   };
 
   const consistentMoodData = prepareMoodTimelineData();
+
+  // Handle time period change
+  const handleTimePeriodChange = (newPeriod) => {
+    if (onRefresh) {
+      onRefresh(newPeriod);
+    }
+  };
 
   return (
     <div>
@@ -707,48 +883,57 @@ export const ActivityTabContent = ({ activityData }) => {
           gap: '1rem'
         }}>
           <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>
-            📈 Activity Trends (Last {selectedDays} Days)
+            📈 Activity Trends {period_type === 'year' ? `(${time_period})` : 
+                              period_type === 'all' ? '(All Time)' : 
+                              `(Last ${time_period} Days)`}
           </h3>
           
-          {/* Day Range Selector */}
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {/* Time Period Selector */}
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.9rem', color: '#6b7280', fontWeight: '500' }}>
               View:
             </span>
-            {[7, 15, 30].map(days => (
+            {[
+              { value: '7', label: '7 Days' },
+              { value: '15', label: '15 Days' },
+              { value: '30', label: '30 Days' },
+              { value: '2024', label: '2024' },
+              { value: '2025', label: '2025' },
+              { value: 'all', label: 'All Time' }
+            ].map(option => (
               <button
-                key={days}
-                onClick={() => setSelectedDays(days)}
+                key={option.value}
+                onClick={() => handleTimePeriodChange(option.value)}
                 style={{
                   padding: '0.5rem 1rem',
                   borderRadius: '8px',
-                  border: selectedDays === days ? '2px solid #667eea' : '2px solid transparent',
-                  background: selectedDays === days 
+                  border: String(time_period) === String(option.value) ? '2px solid #667eea' : '2px solid transparent',
+                  background: String(time_period) === String(option.value) 
                     ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
                     : 'rgba(255, 255, 255, 0.5)',
-                  color: selectedDays === days ? 'white' : '#1f2937',
-                  fontWeight: selectedDays === days ? 'bold' : '600',
+                  color: String(time_period) === String(option.value) ? 'white' : '#1f2937',
+                  fontWeight: String(time_period) === String(option.value) ? 'bold' : '600',
                   fontSize: '0.9rem',
                   cursor: 'pointer',
                   transition: 'all 0.3s ease',
-                  boxShadow: selectedDays === days 
+                  boxShadow: String(time_period) === String(option.value) 
                     ? '0 4px 12px rgba(102, 126, 234, 0.4)' 
                     : '0 2px 4px rgba(0, 0, 0, 0.1)'
                 }}
                 onMouseOver={(e) => {
-                  if (selectedDays !== days) {
+                  if (String(time_period) !== String(option.value)) {
                     e.currentTarget.style.background = 'rgba(255, 255, 255, 0.8)';
                     e.currentTarget.style.transform = 'translateY(-2px)';
                   }
                 }}
                 onMouseOut={(e) => {
-                  if (selectedDays !== days) {
+                  if (String(time_period) !== String(option.value)) {
                     e.currentTarget.style.background = 'rgba(255, 255, 255, 0.5)';
                     e.currentTarget.style.transform = 'translateY(0)';
                   }
                 }}
               >
-                {days} Days
+                {option.label}
               </button>
             ))}
           </div>
@@ -756,27 +941,30 @@ export const ActivityTabContent = ({ activityData }) => {
         
         <LineChart 
           data={consistentMoodData} 
-          label={`Mood Levels Over Time (${selectedDays} Days)`}
+          label={`Mood Levels Over Time${period_type === 'year' ? ` (${time_period})` : period_type === 'all' ? ' (All Time)' : ` (${time_period} Days)`}`}
           color="#667eea" 
           yAxisLabel="Mood Level (1-5)"
           isMoodChart={true}
+          isYearView={period_type === 'year' || period_type === 'all'}
         />
         
-        {(Object.keys(journal_timeline).length > 0 || selectedDays > 0) && (
+        {(Object.keys(journal_timeline).length > 0 || allDatesOrMonths.length > 0) && (
           <LineChart 
             data={prepareTimelineData(journal_timeline)} 
-            label={`Journal Entries Per Day (${selectedDays} Days)`}
+            label={`Journal Entries${period_type === 'year' || period_type === 'all' ? ' Per Month' : ' Per Day'}${period_type === 'year' ? ` (${time_period})` : period_type === 'all' ? ' (All Time)' : ` (${time_period} Days)`}`}
             color="#f093fb" 
             yAxisLabel="Number of Entries"
+            isYearView={period_type === 'year' || period_type === 'all'}
           />
         )}
         
-        {(Object.keys(articles_read_timeline).length > 0 || selectedDays > 0) && (
+        {(Object.keys(articles_read_timeline).length > 0 || allDatesOrMonths.length > 0) && (
           <LineChart 
             data={prepareTimelineData(articles_read_timeline)} 
-            label={`Articles Read Per Day (${selectedDays} Days)`}
+            label={`Articles Read${period_type === 'year' || period_type === 'all' ? ' Per Month' : ' Per Day'}${period_type === 'year' ? ` (${time_period})` : period_type === 'all' ? ' (All Time)' : ` (${time_period} Days)`}`}
             color="#4facfe" 
             yAxisLabel="Number of Articles"
+            isYearView={period_type === 'year' || period_type === 'all'}
           />
         )}
       </div>

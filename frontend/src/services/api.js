@@ -153,7 +153,7 @@ export const confirmBooking = (bookingId) => api.put(`/bookings/${bookingId}/con
 export const getHighRiskPatients = () => api.get('/doctors/high-risk-patients').then(res => res.data);
 
 // Activity APIs
-export const getMyActivity = () => api.get('/activity/my').then(res => res.data);
+export const getMyActivity = (timePeriod = '30') => api.get(`/activity/my?time_period=${timePeriod}`).then(res => res.data);
 export const getPatientActivity = (patientId) => api.get(`/activity/patient/${patientId}`).then(res => res.data);
 export const trackArticleRead = (articleId) => api.post(`/activity/track-article-read/${articleId}`).then(res => res.data);
 

@@ -156,7 +156,7 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
         const data = await getMySessions();
         setSessions(data);
       } else if (activeTab === 'activity') {
-        const data = await getMyActivity();
+        const data = await getMyActivity('30');
         setActivityData(data);
       }
     } catch (error) {
@@ -234,6 +234,16 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
     const interval = setInterval(loadMessages, 3000);
     return () => clearInterval(interval);
   }, [selectedThreadId]);
+
+  // Handler to refresh activity data with different time period
+  const handleActivityRefresh = async (timePeriod) => {
+    try {
+      const data = await getMyActivity(timePeriod);
+      setActivityData(data);
+    } catch (error) {
+      console.error('Error refreshing activity:', error);
+    }
+  };
 
   const handleUpdateClinicProfile = async (e) => {
     e.preventDefault();
@@ -1674,7 +1684,10 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
 
         {/* Activity Tab */}
         {activeTab === 'activity' && (
-          <ActivityTabContent activityData={activityData} />
+          <ActivityTabContent 
+            activityData={activityData} 
+            onRefresh={handleActivityRefresh}
+          />
         )}
 
         {/* Journals Tab (Regular Users) */}

@@ -1,7 +1,7 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
-from sqlalchemy import func
+from sqlalchemy import func, extract
 from app.models import db, User, MoodEntry, Journal, ArticleLike, ArticleRead, ArticleComment, Doctor
 from collections import defaultdict
 
@@ -31,50 +31,91 @@ def get_my_activity():
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
-        # Get date range (last 30 days)
+        # Get time_period from query params (default: 30 days)
+        time_period = request.args.get('time_period', '30')
+        
+        # Calculate date range based on time_period
         end_date = datetime.utcnow()
-        start_date = end_date - timedelta(days=30)
+        start_date = None
+        period_type = 'days'
+        
+        if time_period == 'all':
+            # All time - get user's registration date or earliest activity
+            start_date = user.created_at if hasattr(user, 'created_at') else datetime(2020, 1, 1)
+            period_type = 'all'
+        elif time_period in ['2024', '2025', '2026', '2027']:
+            # Specific year
+            year = int(time_period)
+            start_date = datetime(year, 1, 1)
+            end_date = datetime(year, 12, 31, 23, 59, 59)
+            period_type = 'year'
+        else:
+            # Days (7, 15, 30, etc.)
+            days = int(time_period)
+            start_date = end_date - timedelta(days=days)
+            period_type = 'days'
         
         # Mood check-ins over time
-        mood_entries = MoodEntry.query.filter(
-            MoodEntry.user_id == current_user_id,
-            MoodEntry.created_at >= start_date
-        ).order_by(MoodEntry.created_at).all()
+        mood_query = MoodEntry.query.filter(MoodEntry.user_id == current_user_id)
+        if start_date:
+            mood_query = mood_query.filter(MoodEntry.created_at >= start_date)
+        if period_type != 'all':
+            mood_query = mood_query.filter(MoodEntry.created_at <= end_date)
+        mood_entries = mood_query.order_by(MoodEntry.created_at).all()
         
         mood_timeline = []
         for mood in mood_entries:
+            # For year views, use short month + year (e.g., "Jan 2024")
+            # For all time, use short month + year (e.g., "Jan 2024")
+            if period_type == 'year':
+                month_label = mood.created_at.strftime('%b %Y')  # Short month + year: Jan 2024, Feb 2025, etc.
+            elif period_type == 'all':
+                month_label = mood.created_at.strftime('%b %Y')  # Short month + year: Jan 2024, Feb 2025, etc.
+            else:
+                month_label = None
+            
+            year_month = mood.created_at.strftime('%Y-%m') if period_type in ['year', 'all'] else None
+            
             mood_timeline.append({
                 'date': mood.date.isoformat() if mood.date else mood.created_at.date().isoformat(),
                 'mood_level': mood.mood_level,
                 'energy_level': mood.energy_level,
                 'stress_level': mood.stress_level,
-                'created_at': mood.created_at.isoformat()
+                'created_at': mood.created_at.isoformat(),
+                'month': month_label,
+                'year_month': year_month
             })
         
         # Journal entries over time
-        journals = Journal.query.filter(
-            Journal.user_id == current_user_id,
-            Journal.created_at >= start_date
-        ).order_by(Journal.created_at).all()
+        journals_query = Journal.query.filter(Journal.user_id == current_user_id)
+        if start_date:
+            journals_query = journals_query.filter(Journal.created_at >= start_date)
+        if period_type != 'all':
+            journals_query = journals_query.filter(Journal.created_at <= end_date)
+        journals = journals_query.order_by(Journal.created_at).all()
         
         journal_timeline = group_by_date(journals)
         journal_list = [{'id': j.id, 'title': j.title, 'created_at': j.created_at.isoformat(),
                          'sentiment_score': j.sentiment_score, 'emotion': j.emotion} for j in journals]
         
         # Articles read
-        articles_read = ArticleRead.query.filter(
-            ArticleRead.user_id == current_user_id,
-            ArticleRead.created_at >= start_date
-        ).order_by(ArticleRead.created_at).all()
+        articles_read_query = ArticleRead.query.filter(ArticleRead.user_id == current_user_id)
+        if start_date:
+            articles_read_query = articles_read_query.filter(ArticleRead.created_at >= start_date)
+        if period_type != 'all':
+            articles_read_query = articles_read_query.filter(ArticleRead.created_at <= end_date)
+        articles_read = articles_read_query.order_by(ArticleRead.created_at).all()
         
         articles_read_timeline = group_by_date(articles_read)
         articles_read_list = [ar.to_dict() for ar in articles_read]
         
         # Articles liked
-        articles_liked = ArticleLike.query.filter(
-            ArticleLike.user_id == current_user_id,
-            ArticleLike.created_at >= start_date
-        ).order_by(ArticleLike.created_at).all()
+        articles_liked_query = ArticleLike.query.filter(ArticleLike.user_id == current_user_id)
+        if start_date:
+            articles_liked_query = articles_liked_query.filter(ArticleLike.created_at >= start_date)
+        if period_type != 'all':
+            articles_liked_query = articles_liked_query.filter(ArticleLike.created_at <= end_date)
+        articles_liked = articles_liked_query.order_by(ArticleLike.created_at).all()
         
         articles_liked_timeline = group_by_date(articles_liked)
         articles_liked_list = [{'id': al.id, 'article_id': al.article_id, 
@@ -82,10 +123,12 @@ def get_my_activity():
                                 'created_at': al.created_at.isoformat()} for al in articles_liked]
         
         # Article comments
-        article_comments = ArticleComment.query.filter(
-            ArticleComment.user_id == current_user_id,
-            ArticleComment.created_at >= start_date
-        ).order_by(ArticleComment.created_at).all()
+        article_comments_query = ArticleComment.query.filter(ArticleComment.user_id == current_user_id)
+        if start_date:
+            article_comments_query = article_comments_query.filter(ArticleComment.created_at >= start_date)
+        if period_type != 'all':
+            article_comments_query = article_comments_query.filter(ArticleComment.created_at <= end_date)
+        article_comments = article_comments_query.order_by(ArticleComment.created_at).all()
         
         article_comments_timeline = group_by_date(article_comments)
         article_comments_list = [{'id': ac.id, 'article_id': ac.article_id, 
@@ -115,9 +158,11 @@ def get_my_activity():
             'article_comments_timeline': article_comments_timeline,
             'article_comments_list': article_comments_list,
             'date_range': {
-                'start': start_date.date().isoformat(),
+                'start': start_date.date().isoformat() if start_date else None,
                 'end': end_date.date().isoformat()
-            }
+            },
+            'period_type': period_type,
+            'time_period': time_period
         }), 200
         
     except Exception as e:
