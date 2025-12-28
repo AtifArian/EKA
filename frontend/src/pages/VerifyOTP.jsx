@@ -139,73 +139,88 @@ function VerifyOTP({ onLogin }) {
     }
   };
 
+  const gradientBg = 'linear-gradient(180deg, #6b76c5 0%, #8a87c9 35%, #b49bc1 70%, #d6c2c4 100%)';
+  const cardStyle = {
+    maxWidth: '520px',
+    width: '100%',
+    background: 'rgba(255,255,255,0.18)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    borderRadius: '24px',
+    padding: '2.5rem',
+    boxShadow: '0 18px 50px rgba(72, 64, 109, 0.22)',
+    border: '1px solid rgba(255,255,255,0.35)'
+  };
+
   return (
-    <div className="container" style={{ 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center', 
+    <div style={{
       minHeight: '100vh',
+      background: gradientBg,
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
       padding: '2rem'
     }}>
-      <div className="form-container" style={{ maxWidth: '450px', width: '100%' }}>
+      <div style={cardStyle}>
         {/* Show OTP prominently at the top for non-existing users */}
         {emailNotFound && otpCode && (
           <div style={{
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             color: 'white',
             padding: '1.5rem',
-            borderRadius: '0.75rem',
+            borderRadius: '16px',
             marginBottom: '1.5rem',
             textAlign: 'center',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+            boxShadow: '0 10px 30px rgba(102, 126, 234, 0.35)'
           }}>
-            <div style={{ fontSize: '0.9rem', marginBottom: '0.5rem', opacity: '0.9' }}>
+            <div style={{ fontSize: '0.95rem', marginBottom: '0.5rem', opacity: '0.95' }}>
               Verification code sent to:
             </div>
             <div style={{ 
-              fontSize: '1.1rem', 
-              fontWeight: 'bold',
+              fontSize: '1.15rem', 
+              fontWeight: '700',
               marginBottom: '1rem',
-              padding: '0.5rem',
+              padding: '0.65rem',
               background: 'rgba(255, 255, 255, 0.15)',
-              borderRadius: '0.5rem'
+              borderRadius: '12px'
             }}>
               {maskedEmail || 'your email'}
             </div>
-            <div style={{ fontSize: '0.85rem', marginBottom: '0.5rem', opacity: '0.9' }}>
+            <div style={{ fontSize: '0.9rem', marginBottom: '0.35rem', opacity: '0.95' }}>
               Your Verification Code:
             </div>
             <div style={{ 
-              fontSize: '2.5rem', 
-              fontWeight: 'bold', 
-              letterSpacing: '0.5rem',
+              fontSize: '2.6rem', 
+              fontWeight: '800', 
+              letterSpacing: '0.55rem',
               fontFamily: 'monospace',
-              padding: '0.5rem',
-              background: 'rgba(255, 255, 255, 0.2)',
-              borderRadius: '0.5rem',
-              marginTop: '0.5rem'
+              padding: '0.6rem',
+              background: 'rgba(255, 255, 255, 0.22)',
+              borderRadius: '14px',
+              marginTop: '0.35rem'
             }}>
               {otpCode}
             </div>
-            <div style={{ fontSize: '0.85rem', marginTop: '0.75rem', opacity: '0.9' }}>
+            <div style={{ fontSize: '0.9rem', marginTop: '0.85rem', opacity: '0.95' }}>
               Please enter this code below to continue
             </div>
           </div>
         )}
 
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h2>Two-Factor Authentication</h2>
-          <p style={{ color: '#666', marginTop: '0.5rem' }}>
-            {message || 'Enter the verification code sent to your email'}
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <h2 style={{ fontSize: '2rem', margin: 0, color: '#1f2240' }}>Two-Factor Authentication</h2>
+          <p style={{ color: '#4c5076', marginTop: '0.65rem', fontWeight: 500 }}>
+            {message || 'Verification code sent to your email'}
           </p>
           {otpForTesting && !emailNotFound && (
             <p style={{ 
-              background: '#fff3cd', 
-              color: '#856404', 
-              padding: '0.75rem', 
-              borderRadius: '0.5rem',
+              background: '#fff6d5', 
+              color: '#7a6525', 
+              padding: '0.9rem 1rem', 
+              borderRadius: '12px',
               marginTop: '1rem',
-              fontSize: '0.9rem'
+              fontSize: '0.95rem',
+              border: '1px solid #f3dd93'
             }}>
               <strong>Testing Mode:</strong> Your code is <strong>{otpForTesting}</strong>
             </p>
@@ -215,69 +230,78 @@ function VerifyOTP({ onLogin }) {
         {error && <div className="error-message">{error}</div>}
         
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Verification Code</label>
+          <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+            <label style={{ fontWeight: 700, color: '#2f3059' }}>Verification Code</label>
             <input
               type="text"
               value={otp}
               onChange={handleOtpChange}
-              placeholder="Enter 6-digit code"
+              placeholder="Enter 6-digit"
               required
               autoFocus
               style={{
-                fontSize: '1.5rem',
-                letterSpacing: '0.5rem',
+                fontSize: '1.6rem',
+                letterSpacing: '0.55rem',
                 textAlign: 'center',
-                fontFamily: 'monospace'
+                fontFamily: 'monospace',
+                height: '64px',
+                background: '#f0f2ff',
+                border: '1px solid #d6d9f5',
+                borderRadius: '18px',
+                boxShadow: 'inset 0 2px 6px rgba(51, 63, 130, 0.08)',
+                color: '#1f2240'
               }}
             />
           </div>
 
-          <div className="form-group">
-            <label style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.5rem',
-              cursor: 'pointer',
-              fontSize: '0.95rem'
-            }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.75rem',
+            marginBottom: '1.25rem'
+          }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: '#2f3059', fontWeight: 600 }}>
               <input
                 type="checkbox"
                 checked={rememberDevice}
                 onChange={(e) => setRememberDevice(e.target.checked)}
+                style={{ width: '18px', height: '18px' }}
               />
               Remember this device
             </label>
-            <small style={{ 
-              color: '#666', 
-              fontSize: '0.85rem', 
-              marginTop: '0.25rem', 
-              display: 'block',
-              marginLeft: '1.5rem'
-            }}>
-              You won't need to verify on this device for future logins
-            </small>
+          </div>
+          <div style={{ color: '#6a6b86', fontSize: '0.92rem', marginTop: '-0.5rem', marginBottom: '1rem' }}>
+            You won't need to verify on this device for future logins
           </div>
           
           <button 
             type="submit" 
             className="submit-btn"
             disabled={loading}
-            style={{ opacity: loading ? 0.7 : 1 }}
+            style={{ 
+              opacity: loading ? 0.85 : 1,
+              background: 'linear-gradient(135deg, #6b7de0 0%, #5663c3 100%)',
+              borderRadius: '14px',
+              height: '56px',
+              boxShadow: '0 12px 26px rgba(86, 99, 195, 0.35)',
+              fontSize: '1.05rem',
+              letterSpacing: '0.02em'
+            }}
           >
             {loading ? 'Verifying...' : 'Verify'}
           </button>
 
-          <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+          <div style={{ textAlign: 'center', marginTop: '1.1rem' }}>
             <button
               type="button"
               onClick={() => navigate('/login')}
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#7F7FD5',
+                color: '#6a6fd1',
                 cursor: 'pointer',
-                fontSize: '0.9rem',
+                fontSize: '0.95rem',
                 textDecoration: 'underline'
               }}
             >

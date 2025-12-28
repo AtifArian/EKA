@@ -45,8 +45,8 @@ export const ActivityTabContent = ({ activityData, onRefresh }) => {
     
     const maxValue = Math.max(...data.map(d => d.value), 1);
     const minValue = Math.min(...data.map(d => d.value), 0);
-    const width = 650;
-    const height = 280;
+    const width = 760;
+    const height = 300;
     const paddingLeft = 60;
     const paddingRight = 30;
     const paddingTop = 30;
@@ -112,9 +112,10 @@ export const ActivityTabContent = ({ activityData, onRefresh }) => {
             width={width} 
             height={height} 
             style={{ 
-              background: 'rgba(255, 255, 255, 0.7)', 
-              borderRadius: '10px',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
+              background: '#f8f9ff', 
+              borderRadius: '16px',
+              boxShadow: '0 10px 30px rgba(68, 77, 136, 0.12)',
+              border: '1px solid rgba(107,125,184,0.18)'
             }}
           >
             {/* Grid lines */}
@@ -549,6 +550,38 @@ export const ActivityTabContent = ({ activityData, onRefresh }) => {
 
   const consistentMoodData = prepareMoodTimelineData();
 
+  const trendsShellStyle = {
+    background: 'linear-gradient(180deg, rgba(108,119,197,0.12) 0%, rgba(212,190,198,0.14) 100%)',
+    borderRadius: '22px',
+    padding: '1.75rem',
+    border: '1px solid rgba(255,255,255,0.35)',
+    boxShadow: '0 18px 40px rgba(79, 88, 158, 0.18)',
+    marginBottom: '2rem',
+    backdropFilter: 'blur(6px)',
+    WebkitBackdropFilter: 'blur(6px)'
+  };
+
+  const timeButtonBase = {
+    padding: '0.6rem 1.05rem',
+    borderRadius: '12px',
+    border: '1px solid rgba(130, 139, 190, 0.25)',
+    background: 'rgba(255,255,255,0.7)',
+    color: '#1f2937',
+    fontWeight: 700,
+    fontSize: '0.92rem',
+    cursor: 'pointer',
+    transition: 'all 0.25s ease',
+    boxShadow: '0 4px 10px rgba(56, 68, 126, 0.12)'
+  };
+
+  const timeButtonActive = {
+    ...timeButtonBase,
+    background: 'linear-gradient(135deg, #6779e6 0%, #7e5fd3 100%)',
+    color: '#ffffff',
+    border: '1px solid #7181e8',
+    boxShadow: '0 10px 22px rgba(103, 121, 230, 0.35)'
+  };
+
   // Handle time period change
   const handleTimePeriodChange = (newPeriod) => {
     if (onRefresh) {
@@ -864,16 +897,7 @@ export const ActivityTabContent = ({ activityData, onRefresh }) => {
       </div>
 
       {/* Charts Section */}
-      <div style={{
-        background: 'rgba(255, 255, 255, 0.25)',
-        backdropFilter: 'blur(6px)',
-        WebkitBackdropFilter: 'blur(6px)',
-        border: '1px solid rgba(255, 255, 255, 0.3)',
-        padding: '1.5rem',
-        borderRadius: '15px',
-        marginBottom: '2rem',
-        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
-      }}>
+      <div style={trendsShellStyle}>
         <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
@@ -904,34 +928,7 @@ export const ActivityTabContent = ({ activityData, onRefresh }) => {
               <button
                 key={option.value}
                 onClick={() => handleTimePeriodChange(option.value)}
-                style={{
-                  padding: '0.5rem 1rem',
-                  borderRadius: '8px',
-                  border: String(time_period) === String(option.value) ? '2px solid #667eea' : '2px solid transparent',
-                  background: String(time_period) === String(option.value) 
-                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                    : 'rgba(255, 255, 255, 0.5)',
-                  color: String(time_period) === String(option.value) ? 'white' : '#1f2937',
-                  fontWeight: String(time_period) === String(option.value) ? 'bold' : '600',
-                  fontSize: '0.9rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  boxShadow: String(time_period) === String(option.value) 
-                    ? '0 4px 12px rgba(102, 126, 234, 0.4)' 
-                    : '0 2px 4px rgba(0, 0, 0, 0.1)'
-                }}
-                onMouseOver={(e) => {
-                  if (String(time_period) !== String(option.value)) {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.8)';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                  }
-                }}
-                onMouseOut={(e) => {
-                  if (String(time_period) !== String(option.value)) {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.5)';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }
-                }}
+                style={String(time_period) === String(option.value) ? timeButtonActive : timeButtonBase}
               >
                 {option.label}
               </button>
