@@ -11,7 +11,7 @@ def get_journals():
     search = request.args.get('search', '')
     sort_by = request.args.get('sort', 'recent')
     
-    query = Journal.query.filter_by(is_public=True)
+    query = Journal.query.filter_by(is_public=True)#only public journals
     
     if search:
         query = query.filter(
@@ -22,14 +22,14 @@ def get_journals():
     journals = query.all()
     
     if sort_by == 'hearts':
-        journals = sorted(journals, key=lambda j: j.heart_count(), reverse=True)
+        journals = sorted(journals, key=lambda j: j.heart_count(), reverse=True)#max like
     else:
-        journals = sorted(journals, key=lambda j: j.created_at, reverse=True)
+        journals = sorted(journals, key=lambda j: j.created_at, reverse=True)#default recent
     
     return jsonify([journal.to_dict() for journal in journals]), 200
 
 @journals_bp.route('/top', methods=['GET'])
-def get_top_journals():
+def get_top_journals():#most like 
     """Get journals with most hearts for slideshow"""
     journals = Journal.query.filter_by(is_public=True).all()
     top_journals = sorted(journals, key=lambda j: j.heart_count(), reverse=True)[:10]
@@ -38,7 +38,7 @@ def get_top_journals():
 
 @journals_bp.route('/<int:journal_id>', methods=['GET'])
 @jwt_required(optional=True)
-def get_journal(journal_id):
+def get_journal(journal_id): #get public
     journal = Journal.query.get(journal_id)
     if not journal:
         return jsonify({'error': 'Journal not found'}), 404
@@ -62,12 +62,12 @@ def get_journal(journal_id):
 
 @journals_bp.route('/my', methods=['GET'])
 @jwt_required()
-def get_my_journals():
-    current_user_id = int(get_jwt_identity())
+def get_my_journals():# only mine
+    current_user_id = int(get_jwt_identity())#user id
     
     journals = Journal.query.filter_by(user_id=current_user_id).order_by(
         Journal.created_at.desc()
-    ).all()
+    ).all() #Fetch only user’s journals
     
     return jsonify([journal.to_dict() for journal in journals]), 200
 
@@ -78,7 +78,7 @@ def create_journal():
     current_user_id = int(get_jwt_identity())
 
     # Support both JSON and form submissions
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True) or {} #read safe
     title = data.get('title') or request.form.get('title')
     content = data.get('content') or request.form.get('content')
     is_public_raw = data.get('is_public', request.form.get('is_public', False))

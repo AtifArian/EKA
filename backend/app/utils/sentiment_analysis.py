@@ -25,7 +25,7 @@ EMOTION_LABELS = [
     "Very Happy"
 ]
 
-def _fallback_polarity_to_emotion(polarity: float) -> str:
+def _fallback_polarity_to_emotion(polarity: float) -> str:#3
     """Map TextBlob polarity (-1..1) to one of the discrete emotion labels."""
     # Define thresholds (tunable) - made more sensitive to negative emotions
     if polarity <= -0.4:  # Lowered from -0.6 to catch more negative emotions
@@ -38,7 +38,7 @@ def _fallback_polarity_to_emotion(polarity: float) -> str:
         return "Happy"
     return "Very Happy"
 
-def analyze_sentiment(text: str) -> float:
+def analyze_sentiment(text: str) -> float:#2
     """Return continuous polarity score (-1..1). Retained for compatibility.
     
     Also checks for critical keywords related to mental health crises.
@@ -59,7 +59,7 @@ def analyze_sentiment(text: str) -> float:
     except Exception:
         return 0.0
 
-def analyze_emotion(text: str) -> str:
+def analyze_emotion(text: str) -> str: #1
     """Classify a journal entry into one of five emotion categories using Gemini + robust context rules."""
 
     # If Gemini not available, fallback to polarity

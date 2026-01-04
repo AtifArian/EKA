@@ -6,29 +6,29 @@ db = SQLAlchemy()
 bcrypt = Bcrypt()
 
 # Association tables
-friendships = db.Table('friendships',
+friendships = db.Table('friendships', # a bridge table for many-to-many User friendships
     db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
     db.Column('friend_id', db.Integer, db.ForeignKey('user.id'), primary_key=True)
 )
 
-doctor_patients = db.Table('doctor_patients',
+doctor_patients = db.Table('doctor_patients', #doctor to patients relationship
     db.Column('doctor_id', db.Integer, db.ForeignKey('doctor.id'), primary_key=True),
     db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True)
 )
 
-class User(db.Model):
+class User(db.Model): # Creates a User database table
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255))
     full_name = db.Column(db.String(120))
-    profile_picture = db.Column(db.String(255))
+    profile_picture = db.Column(db.String(255))# Path to profile picture
     is_doctor = db.Column(db.Boolean, default=False)
     google_id = db.Column(db.String(255), unique=True)
     free_booking_used = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relationships
+    # Relationships lazy =Loads all related data only when you ask for it ,backref=Child point to parent
     mood_entries = db.relationship('MoodEntry', backref='user', lazy=True, cascade='all, delete-orphan')
     journals = db.relationship('Journal', backref='author', lazy=True, cascade='all, delete-orphan')
     article_likes = db.relationship('ArticleLike', backref='user', lazy=True, cascade='all, delete-orphan')
@@ -42,7 +42,7 @@ class User(db.Model):
                             primaryjoin=(friendships.c.user_id == id),
                             secondaryjoin=(friendships.c.friend_id == id),
                             backref=db.backref('friend_of', lazy='dynamic'),
-                            lazy='dynamic')
+                            lazy='dynamic')#load query based
     
     def set_password(self, password):
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
@@ -81,7 +81,7 @@ class FriendRequest(db.Model):
     from_user = db.relationship('User', foreign_keys=[from_user_id], backref='sent_friend_requests')
     to_user = db.relationship('User', foreign_keys=[to_user_id], backref='received_friend_requests')
     
-    def to_dict(self):
+    def to_dict(self):#created temporarily in memory
         return {
             'id': self.id,
             'from_user_id': self.from_user_id,
@@ -92,7 +92,7 @@ class FriendRequest(db.Model):
             'created_at': self.created_at.isoformat()
         }
 
-class Doctor(db.Model):
+class Doctor(db.Model): # Creates Doctor database table
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     specialization = db.Column(db.String(100))

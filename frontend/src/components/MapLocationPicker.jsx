@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+//func call when onLocationSelect changes
 function MapLocationPicker({ initialPosition, onLocationSelect }) {
   const [position, setPosition] = useState(initialPosition || { lat: 23.8103, lng: 90.4125 }); // Default: Dhaka, Bangladesh
   const [searchQuery, setSearchQuery] = useState('');
@@ -7,7 +8,7 @@ function MapLocationPicker({ initialPosition, onLocationSelect }) {
   const [isSearching, setIsSearching] = useState(false);
   const initialMount = useRef(true);
 
-  useEffect(() => {
+  useEffect(() => {   // Runs when position changes
     // Skip calling onLocationSelect on initial mount to avoid infinite loop
     if (initialMount.current) {
       initialMount.current = false;
@@ -19,8 +20,8 @@ function MapLocationPicker({ initialPosition, onLocationSelect }) {
     }
   }, [position]);
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+  const handleSearch = async () => { //run>call api> get result
+    if (!searchQuery.trim()) return;// Don't search empty query
     
     setIsSearching(true);
     try {
@@ -40,16 +41,16 @@ function MapLocationPicker({ initialPosition, onLocationSelect }) {
 
   const handleSelectResult = (result) => {
     const newPosition = {
-      lat: parseFloat(result.lat),
+      lat: parseFloat(result.lat),//convert str to num
       lng: parseFloat(result.lon)
     };
-    setPosition(newPosition);
-    setSearchResults([]);
-    setSearchQuery(result.display_name);
+    setPosition(newPosition);// Update map position
+    setSearchResults([]); // Clear search results
+    setSearchQuery(result.display_name);// Put full address in search box
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
+  const handleKeyPress = (e) => { // key pressed
+    if (e.key === 'Enter') { //toggle search
       handleSearch();
     }
   };

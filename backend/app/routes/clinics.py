@@ -8,10 +8,10 @@ clinics_bp = Blueprint('clinics', __name__)
 @clinics_bp.route('/', methods=['GET'])
 @clinics_bp.route('', methods=['GET'])
 def get_clinics():
-    print("=== GET CLINICS START ===")
-    search = request.args.get('search', '')
-    specialization = request.args.get('specialization', '')
-    sort_by = request.args.get('sort', 'highest')
+    print("=== GET CLINICS START ===")#search=naba 
+    search = request.args.get('search', '') # Search term |part of url request
+    specialization = request.args.get('specialization', '')# Doctor specialty
+    sort_by = request.args.get('sort', 'highest')# Sort option
     print(f"Filters - search: {search}, specialization: {specialization}, sort_by: {sort_by}")
     
     # Get all doctors with profiles
@@ -25,8 +25,8 @@ def get_clinics():
     for doc in all_doctors:
         print(f"Doctor ID: {doc.id}, User ID: {doc.user_id}, User Name: {doc.user.username}, Verified: {doc.is_verified}")
     
-    if search:
-        query = query.filter(
+    if search:#if naba 
+        query = query.filter(#show naba
             (User.full_name.ilike(f'%{search}%')) | 
             (User.username.ilike(f'%{search}%')) |
             (Doctor.bio.ilike(f'%{search}%'))
@@ -63,7 +63,7 @@ def get_clinic_detail(doctor_id):
     data = doctor.to_dict()
     data['reviews'] = [review.to_dict() for review in reviews]
     
-    return jsonify(data), 200
+    return jsonify(data), 200 #py to json # sends json data to frontend
 
 @clinics_bp.route('/<int:doctor_id>/reviews', methods=['POST'])
 @jwt_required()

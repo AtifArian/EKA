@@ -16,7 +16,7 @@ def get_doctor_profile():
     """Get doctor's own profile"""
     try:
         print("=== GET DOCTOR PROFILE START ===")  # DEBUG
-        current_user_id = int(get_jwt_identity())
+        current_user_id = int(get_jwt_identity())# get id from token
         print(f"User ID: {current_user_id}")  # DEBUG
         
         doctor = Doctor.query.filter_by(user_id=current_user_id).first()
@@ -25,10 +25,10 @@ def get_doctor_profile():
         if not doctor:
             return jsonify({'error': 'Doctor profile not found'}), 404
         
-        doctor_dict = doctor.to_dict()
+        doctor_dict = doctor.to_dict() # model>doctor>to_dict
         print(f"Doctor dict: {doctor_dict}")  # DEBUG
         
-        return jsonify(doctor_dict), 200
+        return jsonify(doctor_dict), 200 #memo>dict>json>screen
         
     except Exception as e:
         print(f"ERROR in get_doctor_profile: {str(e)}")
@@ -37,17 +37,17 @@ def get_doctor_profile():
 
 
 @doctors_bp.route('/profile', methods=['PUT'])
-@jwt_required()
+@jwt_required()# token per login
 @doctor_required
 def update_doctor_profile():
     """Update doctor's clinic profile"""
-    current_user_id = int(get_jwt_identity())
-    doctor = Doctor.query.filter_by(user_id=current_user_id).first()
+    current_user_id = int(get_jwt_identity())#token>id
+    doctor = Doctor.query.filter_by(user_id=current_user_id).first() #if doc
     
     if not doctor:
         return jsonify({'error': 'Doctor profile not found'}), 404
     
-    data = request.get_json()
+    data = request.get_json()#msg inside letter|Gets data sent from frontend browser/app to  Flask serve
     
     # Update fields
     if 'specialization' in data:
@@ -73,11 +73,11 @@ def update_doctor_profile():
     if 'google_maps_link' in data:
         doctor.google_maps_link = data['google_maps_link']
     
-    # Mark profile as complete if required fields are filled
+    # Mark profile as complete if required fields are filled 
     if doctor.specialization and doctor.bio and doctor.session_charge is not None:
         doctor.is_profile_complete = True
     
-    db.session.commit()
+    db.session.commit() #save changes to db
     
     return jsonify({
         'message': 'Profile updated successfully',
