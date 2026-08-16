@@ -17,6 +17,7 @@ function MapLocationPicker({ initialPosition, onLocationSelect }) {
     if (onLocationSelect) {
       onLocationSelect(position);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [position]);
 
   const handleSearch = async () => {
