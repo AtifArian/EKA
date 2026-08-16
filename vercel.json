@@ -1,20 +1,24 @@
 {
   "version": 2,
-  "name": "eka-frontend",
   "builds": [
     {
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": { "distDir": "frontend/build" }
+    },
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python"
     }
   ],
-  "env": {
-    "REACT_APP_API_URL": "https://YOUR-BACKEND-URL/api"
-  },
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "https://YOUR-BACKEND-URL/api/$1"
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "frontend/build/$1"
     }
   ]
 }

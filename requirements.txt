@@ -1,0 +1,11 @@
+flask
+flask-sqlalchemy
+flask-cors
+flask-jwt-extended
+flask-bcrypt
+python-dotenv
+textblob
+numpy
+google-auth
+google-generativeai
+psycopg2-binary
