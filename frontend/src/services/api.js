@@ -30,6 +30,31 @@ api.interceptors.request.use(
   }
 );
 
+// Response interceptor to handle token expiration
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // Token expired or invalid
+      const errorMsg = error.response.data?.msg || error.response.data?.error || '';
+      if (errorMsg.includes('expired') || errorMsg.includes('Token') || errorMsg.includes('JWT')) {
+        // Clear invalid token
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        // Redirect to login page
+        if (window.location.pathname !== '/login') {
+          alert('Your session has expired. Please login again.');
+          window.location.href = '/login';
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const checkTodayMood = () => api.get('/mood/today').then(res => res.data);
 export const createMoodEntry = (data) => api.post('/mood', data).then(res => res.data);
 export const getMoodEntries = (days = 30) => api.get(`/mood?days=${days}`).then(res => res.data);
@@ -86,10 +111,19 @@ export const getArticles = (params) => {
   const query = new URLSearchParams(params).toString();
   return api.get(`/articles?${query}`).then(res => res.data);
 };
+export const getTopArticles = () => api.get('/articles/top').then(res => res.data);
 export const getArticle = (articleId) => api.get(`/articles/${articleId}`).then(res => res.data);
 export const getMyArticles = () => api.get('/articles/my').then(res => res.data);
-export const createArticle = (data) => api.post('/articles', data).then(res => res.data);
-export const updateArticle = (articleId, data) => api.put(`/articles/${articleId}`, data).then(res => res.data);
+export const createArticle = (formData) => {
+  return api.post('/articles', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }).then(res => res.data);
+};
+export const updateArticle = (articleId, formData) => {
+  return api.put(`/articles/${articleId}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }).then(res => res.data);
+};
 export const deleteArticle = (articleId) => api.delete(`/articles/${articleId}`).then(res => res.data);
 export const likeArticle = (articleId) => api.post(`/articles/${articleId}/like`).then(res => res.data);
 export const addArticleComment = (articleId, data) => api.post(`/articles/${articleId}/comments`, data).then(res => res.data);
@@ -107,5 +141,29 @@ export const updateJournal = (journalId, data) => api.put(`/journals/${journalId
 export const deleteJournal = (journalId) => api.delete(`/journals/${journalId}`).then(res => res.data);
 export const heartJournal = (journalId) => api.post(`/journals/${journalId}/heart`).then(res => res.data);
 export const addJournalComment = (journalId, data) => api.post(`/journals/${journalId}/comments`, data).then(res => res.data);
+
+// Booking APIs
+export const getMyBookings = () => api.get('/bookings/my-bookings').then(res => res.data);
+export const getMySessions = () => api.get('/bookings/my-sessions').then(res => res.data);
+export const cancelBooking = (bookingId) => api.put(`/bookings/${bookingId}/cancel`).then(res => res.data);
+export const completeBooking = (bookingId) => api.put(`/bookings/${bookingId}/complete`).then(res => res.data);
+export const confirmBooking = (bookingId) => api.put(`/bookings/${bookingId}/confirm`).then(res => res.data);
+
+// Doctor APIs
+export const getHighRiskPatients = () => api.get('/doctors/high-risk-patients').then(res => res.data);
+
+// Activity APIs
+export const getMyActivity = () => api.get('/activity/my').then(res => res.data);
+export const getPatientActivity = (patientId) => api.get(`/activity/patient/${patientId}`).then(res => res.data);
+export const trackArticleRead = (articleId) => api.post(`/activity/track-article-read/${articleId}`).then(res => res.data);
+
+// Donation APIs - no authentication required
+export const createDonation = (data) => {
+  return axios.post(`${API_URL}/donations`, data, {
+    headers: { 'Content-Type': 'application/json' }
+  }).then(res => res.data);
+};
+export const getDonations = (params) => axios.get(`${API_URL}/donations`, { params }).then(res => res.data);
+export const getDonationStats = () => axios.get(`${API_URL}/donations/stats`).then(res => res.data);
 
 export default api;

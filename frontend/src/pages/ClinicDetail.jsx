@@ -1,17 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getClinicDetail, bookSession, addClinicReview, createDoctorChatRequest } from '../services/api';
-import { MapContainer, TileLayer, Marker } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-
-// Fix Leaflet default icon issue
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
-  iconUrl: require('leaflet/dist/images/marker-icon.png'),
-  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
-});
+import { getClinicDetail, bookSession, addClinicReview, createDoctorChatRequest, getMyBookings } from '../services/api';
 
 function ClinicDetail({ user }) {
   const { id } = useParams();
@@ -21,6 +10,7 @@ function ClinicDetail({ user }) {
   const [showReview, setShowReview] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [hasBooked, setHasBooked] = useState(false);
   const [bookingData, setBookingData] = useState({
     appointment_date: '',
     notes: ''
@@ -31,18 +21,38 @@ function ClinicDetail({ user }) {
   });
   const [sendingChatReq, setSendingChatReq] = useState(false);
 
-  useEffect(() => {
-    fetchClinicDetail();
-  }, [id]);
-
-  const fetchClinicDetail = async () => {
+  const fetchClinicDetail = useCallback(async () => {
     try {
       const data = await getClinicDetail(id);
       setClinic(data);
     } catch (error) {
       console.error('Error fetching clinic:', error);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchClinicDetail();
+  }, [fetchClinicDetail]);
+
+  useEffect(() => {
+    const checkBookings = async () => {
+      try {
+        if (user) {
+          const bookings = await getMyBookings();
+          const booked = Array.isArray(bookings) && bookings.some(b => {
+            const doc = b.doctor;
+            return doc && (doc.id === parseInt(id, 10));
+          });
+          setHasBooked(booked);
+        } else {
+          setHasBooked(false);
+        }
+      } catch (e) {
+        setHasBooked(false);
+      }
+    };
+    checkBookings();
+  }, [user, id]);
 
   const handleBooking = async (e) => {
     e.preventDefault();
@@ -52,12 +62,8 @@ function ClinicDetail({ user }) {
     }
 
     try {
-      const response = await bookSession(id, bookingData);
-      if (response.was_free) {
-        alert('Session booked successfully! This was your FREE booking.');
-      } else {
-        alert('Session booked successfully!');
-      }
+      await bookSession(id, bookingData);
+      alert('Session booked successfully!');
       setShowBooking(false);
       setBookingData({ appointment_date: '', notes: '' });
     } catch (error) {
@@ -80,7 +86,7 @@ function ClinicDetail({ user }) {
     }
 
     try {
-      const response = await bookSession(id, { ...bookingData, payment_confirmed: true });
+      await bookSession(id, { ...bookingData, payment_confirmed: true });
       alert('Payment processed! Session booked successfully.');
       setShowPayment(false);
       setPaymentAmount('');
@@ -128,67 +134,16 @@ function ClinicDetail({ user }) {
     return <div className="loading">Loading...</div>;
   }
 
-  // Construct full URL for profile picture
+  // Construct full URL for profile picture (normalize leading slash)
   const API_BASE = process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050';
-  const profilePictureUrl = clinic.user.profile_picture 
-    ? `${API_BASE}${clinic.user.profile_picture}`
+  const profilePath = clinic.user.profile_picture
+    ? (clinic.user.profile_picture.startsWith('/')
+        ? clinic.user.profile_picture
+        : `/${clinic.user.profile_picture}`)
+    : null;
+  const profilePictureUrl = profilePath
+    ? `${API_BASE}${profilePath}`
     : 'https://via.placeholder.com/500x500?text=Doctor';
-
-  // Convert Google Maps link to embeddable format
-  const getEmbedUrl = (link) => {
-    if (!link) return null;
-    
-    try {
-      // If already an embed link, return as is
-      if (link.includes('/embed')) return link;
-      
-      // Extract coordinates from various Google Maps URL formats
-      // Format 1: https://www.google.com/maps/place/.../@lat,lng,zoom
-      let match = link.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-      if (match) {
-        const lat = match[1];
-        const lng = match[2];
-        return `https://maps.google.com/maps?q=${lat},${lng}&hl=es;z=14&output=embed`;
-      }
-      
-      // Format 2: https://maps.google.com/?q=lat,lng
-      match = link.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
-      if (match) {
-        const lat = match[1];
-        const lng = match[2];
-        return `https://maps.google.com/maps?q=${lat},${lng}&hl=es;z=14&output=embed`;
-      }
-      
-      // Format 3: https://goo.gl/maps/... or https://maps.app.goo.gl/...
-      // These need to be expanded first, but we can try using the place extraction
-      if (link.includes('goo.gl')) {
-        // Extract any coordinates if present in the URL after redirect
-        return `https://maps.google.com/maps?q=${encodeURIComponent(link)}&output=embed`;
-      }
-      
-      // Format 4: Extract place name or address from URL
-      const placeMatch = link.match(/\/place\/([^\/]+)/);
-      if (placeMatch) {
-        const place = decodeURIComponent(placeMatch[1]);
-        return `https://maps.google.com/maps?q=${encodeURIComponent(place)}&output=embed`;
-      }
-      
-      // Fallback: try to extract any q parameter
-      const urlObj = new URL(link);
-      const qParam = urlObj.searchParams.get('q');
-      if (qParam) {
-        return `https://maps.google.com/maps?q=${encodeURIComponent(qParam)}&output=embed`;
-      }
-      
-    } catch (e) {
-      console.error('Error parsing Google Maps URL:', e);
-    }
-    
-    // Last resort: use the link as a query (won't work for all formats)
-    return `https://maps.google.com/maps?q=${encodeURIComponent(link)}&output=embed`;
-  };
-
-  const embedUrl = clinic.google_maps_link ? getEmbedUrl(clinic.google_maps_link) : null;
 
   return (
     <div className="container">
@@ -278,33 +233,51 @@ function ClinicDetail({ user }) {
             overflow: 'hidden',
             border: '2px solid #e0e0e0'
           }}>
-            <MapContainer
-              center={[clinic.latitude, clinic.longitude]}
-              zoom={15}
-              style={{ height: '100%', width: '100%' }}
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              <Marker position={[clinic.latitude, clinic.longitude]} />
-            </MapContainer>
+            <iframe
+              title="Clinic Location Map"
+              width="100%"
+              height="100%"
+              style={{ border: 0 }}
+              loading="lazy"
+              allowFullScreen
+              referrerPolicy="no-referrer-when-downgrade"
+              src={`https://www.google.com/maps/embed/v1/place?key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY'}&q=${clinic.latitude},${clinic.longitude}&zoom=15`}
+            />
           </div>
           {clinic.location && (
             <p style={{ marginTop: '1rem', color: '#666', fontSize: '0.95rem' }}>
               📍 <strong>{clinic.location}</strong>
             </p>
           )}
+          <a 
+            href={`https://www.google.com/maps/search/?api=1&query=${clinic.latitude},${clinic.longitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-block',
+              marginTop: '0.5rem',
+              color: '#667eea',
+              textDecoration: 'none',
+              fontWeight: '500'
+            }}
+          >
+            Open in Google Maps →
+          </a>
         </div>
       )}
 
       <div className="comments-section" style={{ marginTop: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2>Reviews ({clinic.reviews.length})</h2>
-          {user && !user.is_doctor && (
+          {user && !user.is_doctor && hasBooked && (
             <button onClick={() => setShowReview(true)} className="submit-btn" style={{ width: 'auto' }}>
               Write Review
             </button>
+          )}
+          {user && !user.is_doctor && !hasBooked && (
+            <span style={{ color: '#666', fontSize: '0.9rem' }}>
+              Book a session to write a review.
+            </span>
           )}
         </div>
 

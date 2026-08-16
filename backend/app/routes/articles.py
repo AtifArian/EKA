@@ -32,6 +32,14 @@ def get_articles():
     
     return jsonify([article.to_dict() for article in articles]), 200
 
+@articles_bp.route('/top', methods=['GET'])
+def get_top_articles():
+    """Get articles with most likes for featured section"""
+    articles = Article.query.all()
+    top_articles = sorted(articles, key=lambda a: a.like_count(), reverse=True)[:10]
+    
+    return jsonify([article.to_dict(include_content=True) for article in top_articles]), 200
+
 @articles_bp.route('/<int:article_id>', methods=['GET'])
 @jwt_required(optional=True)
 def get_article(article_id):
@@ -84,6 +92,10 @@ def create_article():
     if not doctor:
         return jsonify({'error': 'Doctor profile not found'}), 404
     
+    # Only verified doctors can publish articles
+    if not doctor.is_verified:
+        return jsonify({'error': 'Only verified doctors can publish articles. Please complete your verification.'}), 403
+    
     # Support both JSON and form data
     data = request.get_json(silent=True) or {}
     title = data.get('title') or request.form.get('title')
@@ -94,6 +106,20 @@ def create_article():
     if not title or not content:
         return jsonify({'error': 'title and content are required'}), 400
     
+    # Cover image is mandatory
+    if 'cover_image' not in request.files:
+        return jsonify({'error': 'cover_image is required'}), 400
+    
+    file = request.files['cover_image']
+    if file.filename == '':
+        return jsonify({'error': 'cover_image is required'}), 400
+    
+    # Validate file type
+    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+    file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+    if file_ext not in allowed_extensions:
+        return jsonify({'error': 'Invalid image format. Allowed: png, jpg, jpeg, gif, webp'}), 400
+    
     article = Article(
         doctor_id=doctor.id,
         title=title,
@@ -102,12 +128,15 @@ def create_article():
         keywords=keywords
     )
     
-    if 'cover_image' in request.files:
-        file = request.files['cover_image']
-        filename = f"article_{file.filename}"
-        filepath = os.path.join('uploads', 'articles', filename)
-        file.save(filepath)
-        article.cover_image = filepath
+    # Save cover image
+    from werkzeug.utils import secure_filename
+    import time
+    filename = f"article_{doctor.id}_{int(time.time())}_{secure_filename(file.filename)}"
+    upload_dir = os.path.join('uploads', 'articles')
+    os.makedirs(upload_dir, exist_ok=True)
+    filepath = os.path.join(upload_dir, filename)
+    file.save(filepath)
+    article.cover_image = f"/uploads/articles/{filename}"
     
     db.session.add(article)
     db.session.commit()
@@ -134,21 +163,39 @@ def update_article(article_id):
     
     data = request.get_json(silent=True) or {}
     
-    if 'title' in data and data['title']:
-        article.title = data['title']
-    if 'content' in data and data['content']:
-        article.content = data['content']
-    if 'mood_category' in data:
-        article.mood_category = data['mood_category']
-    if 'keywords' in data:
-        article.keywords = data['keywords']
+    # Get form data if no JSON
+    title = data.get('title') or request.form.get('title')
+    content = data.get('content') or request.form.get('content')
+    mood_category = data.get('mood_category') or request.form.get('mood_category')
+    keywords = data.get('keywords') or request.form.get('keywords')
     
+    if title:
+        article.title = title
+    if content:
+        article.content = content
+    if mood_category is not None:
+        article.mood_category = mood_category
+    if keywords is not None:
+        article.keywords = keywords
+    
+    # Handle cover image update
     if 'cover_image' in request.files:
         file = request.files['cover_image']
-        filename = f"article_{file.filename}"
-        filepath = os.path.join('uploads', 'articles', filename)
-        file.save(filepath)
-        article.cover_image = filepath
+        if file.filename != '':
+            # Validate file type
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+            file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+            if file_ext not in allowed_extensions:
+                return jsonify({'error': 'Invalid image format'}), 400
+            
+            from werkzeug.utils import secure_filename
+            import time
+            filename = f"article_{doctor.id}_{int(time.time())}_{secure_filename(file.filename)}"
+            upload_dir = os.path.join('uploads', 'articles')
+            os.makedirs(upload_dir, exist_ok=True)
+            filepath = os.path.join(upload_dir, filename)
+            file.save(filepath)
+            article.cover_image = f"/uploads/articles/{filename}"
     
     db.session.commit()
     

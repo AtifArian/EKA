@@ -82,6 +82,14 @@ def add_review(doctor_id):
     if not doctor:
         return jsonify({'error': 'Doctor not found'}), 404
     
+    # Require that the user has at least one booking with this doctor
+    has_booking = Booking.query.filter_by(
+        user_id=current_user_id,
+        doctor_id=doctor_id
+    ).first()
+    if not has_booking:
+        return jsonify({'error': 'You must book a session with this doctor before leaving a review.'}), 403
+    
     existing = ClinicReview.query.filter_by(
         doctor_id=doctor_id,
         user_id=current_user_id

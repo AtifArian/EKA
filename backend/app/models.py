@@ -33,6 +33,7 @@ class User(db.Model):
     journals = db.relationship('Journal', backref='author', lazy=True, cascade='all, delete-orphan')
     article_likes = db.relationship('ArticleLike', backref='user', lazy=True, cascade='all, delete-orphan')
     article_comments = db.relationship('ArticleComment', backref='user', lazy=True, cascade='all, delete-orphan')
+    article_reads = db.relationship('ArticleRead', backref='user', lazy=True, cascade='all, delete-orphan')
     journal_hearts = db.relationship('JournalHeart', backref='user', lazy=True, cascade='all, delete-orphan')
     journal_comments = db.relationship('JournalComment', backref='user', lazy=True, cascade='all, delete-orphan')
     
@@ -171,13 +172,13 @@ class MoodEntry(db.Model):
 
 class Article(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.id'), nullable=False)
-    title = db.Column(db.String(200), nullable=False)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.id'), nullable=False, index=True)
+    title = db.Column(db.String(200), nullable=False, index=True)
     content = db.Column(db.Text, nullable=False)
-    cover_image = db.Column(db.String(255))
-    mood_category = db.Column(db.String(50))  # happy, sad, anxious, stressed, neutral
+    cover_image = db.Column(db.String(255), nullable=False)  # Mandatory cover image
+    mood_category = db.Column(db.String(50), index=True)  # happy, sad, anxious, stressed, neutral
     keywords = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     
     # Relationships
     author = db.relationship('Doctor', backref='articles', lazy=True)
@@ -223,6 +224,24 @@ class ArticleComment(db.Model):
             'id': self.id,
             'user': self.user.to_dict(),
             'content': self.content,
+            'created_at': self.created_at.isoformat()
+        }
+
+class ArticleRead(db.Model):
+    """Track when users read articles"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    article_id = db.Column(db.Integer, db.ForeignKey('article.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    article = db.relationship('Article', backref='reads')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'article_id': self.article_id,
+            'article_title': self.article.title if self.article else None,
             'created_at': self.created_at.isoformat()
         }
 
@@ -424,5 +443,37 @@ class Notification(db.Model):
             'ref_type': self.ref_type,
             'ref_id': self.ref_id,
             'is_read': self.is_read,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+class Donation(db.Model):
+    __tablename__ = 'donation'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    donor_name = db.Column(db.String(100), nullable=True)  # Optional for anonymous donations
+    donor_email = db.Column(db.String(120), nullable=True, index=True)  # Indexed for lookup
+    amount = db.Column(db.Float, nullable=False, index=True)  # Indexed for stats
+    currency = db.Column(db.String(10), default='BDT')
+    payment_method = db.Column(db.String(50), nullable=False, index=True)  # Indexed for filtering
+    transaction_id = db.Column(db.String(100), nullable=True, unique=True)  # Unique transaction IDs
+    phone_number = db.Column(db.String(20), nullable=True)
+    message = db.Column(db.Text, nullable=True)
+    is_anonymous = db.Column(db.Boolean, default=False, index=True)
+    status = db.Column(db.String(20), default='pending', index=True)  # Indexed for filtering
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)  # Indexed for sorting
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'donor_name': 'Anonymous' if self.is_anonymous else self.donor_name,
+            'donor_email': None if self.is_anonymous else self.donor_email,
+            'amount': self.amount,
+            'currency': self.currency,
+            'payment_method': self.payment_method,
+            'transaction_id': self.transaction_id,
+            'phone_number': self.phone_number,
+            'message': self.message,
+            'is_anonymous': self.is_anonymous,
+            'status': self.status,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }

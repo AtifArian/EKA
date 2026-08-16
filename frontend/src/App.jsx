@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import './App.css';
 
@@ -7,6 +7,8 @@ import './App.css';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import MoodTracker from './components/MoodTracker';
+import HighRiskAlert from './components/HighRiskAlert';
+import EmergencyCallPopup from './components/EmergencyCallPopup';
 
 // Import pages
 import Home from './pages/Home';
@@ -21,10 +23,12 @@ import JournalDetail from './pages/JournalDetail';
 import MyProfile from './pages/MyProfile';
 import UserProfile from './pages/UserProfile';
 import Chat from './pages/Chat';
+import VideoCall from './pages/VideoCall';
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [navigateToInbox, setNavigateToInbox] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -56,35 +60,66 @@ function App() {
   return (
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || "dummy-client-id"}>
       <Router>
-        <div className="App">
-          <Navbar user={user} onLogout={handleLogout} />
-          
-          {user && !user.is_doctor && <MoodTracker />}
-          
-          <Routes>
-            <Route path="/" element={<Home user={user} />} />
-            <Route path="/login" element={<Login onLogin={handleLogin} />} />
-            <Route path="/signup" element={<Signup onLogin={handleLogin} />} />
-            <Route path="/clinics" element={<Clinics />} />
-            <Route path="/clinics/:id" element={<ClinicDetail user={user} />} />
-            <Route path="/articles" element={<Articles user={user} />} />
-            <Route path="/articles/:id" element={<ArticleDetail user={user} />} />
-            <Route path="/journals" element={<Journals user={user} />} />
-            <Route path="/journals/:id" element={<JournalDetail user={user} />} />
-            <Route path="/users/:id" element={<UserProfile />} />
-            <Route path="/chat/:userId" element={<ProtectedRoute user={user}><Chat user={user} /></ProtectedRoute>} />
-            <Route 
-              path="/profile" 
-              element={
-                <ProtectedRoute user={user}>
-                  <MyProfile user={user} setUser={setUser} />
-                </ProtectedRoute>
-              } 
-            />
-          </Routes>
-        </div>
+        <AppContent 
+          user={user}
+          setUser={setUser}
+          onLogin={handleLogin}
+          onLogout={handleLogout}
+          navigateToInbox={navigateToInbox}
+          setNavigateToInbox={setNavigateToInbox}
+        />
       </Router>
     </GoogleOAuthProvider>
+  );
+}
+
+function AppContent({ user, setUser, onLogin, onLogout, navigateToInbox, setNavigateToInbox }) {
+  const location = useLocation();
+  return (
+    <div className="App">
+      <Navbar user={user} onLogout={onLogout} />
+      {/* Global emergency call popup for patients */}
+      {location.pathname.startsWith('/video-call') ? null : (
+        user && !user.is_doctor ? <EmergencyCallPopup user={user} /> : null
+      )}
+      {location.pathname.startsWith('/video-call') ? null : (
+        <>
+          {user && !user.is_doctor && <MoodTracker />}
+          {user && user.is_doctor && (
+            <HighRiskAlert user={user} onChatNow={(patient) => setNavigateToInbox(patient)} />
+          )}
+        </>
+      )}
+      <Routes>
+        <Route path="/" element={<Home user={user} />} />
+        <Route path="/login" element={<Login onLogin={onLogin} />} />
+        <Route path="/signup" element={<Signup onLogin={onLogin} />} />
+        <Route path="/clinics" element={<Clinics />} />
+        <Route path="/clinics/:id" element={<ClinicDetail user={user} />} />
+        <Route path="/articles" element={<Articles user={user} />} />
+        <Route path="/articles/:id" element={<ArticleDetail user={user} />} />
+        <Route path="/journals" element={<Journals user={user} />} />
+        <Route path="/journals/:id" element={<JournalDetail user={user} />} />
+        <Route path="/users/:id" element={<UserProfile />} />
+        <Route path="/chat/:userId" element={<ProtectedRoute user={user}><Chat user={user} /></ProtectedRoute>} />
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute user={user}>
+              <MyProfile user={user} setUser={setUser} navigateToInbox={navigateToInbox} setNavigateToInbox={setNavigateToInbox} />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/video-call/:sessionId" 
+          element={
+            <ProtectedRoute user={user}>
+              <VideoCall user={user} setUser={setUser} />
+            </ProtectedRoute>
+          } 
+        />
+      </Routes>
+    </div>
   );
 }
 

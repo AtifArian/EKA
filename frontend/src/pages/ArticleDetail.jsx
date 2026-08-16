@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getArticle, likeArticle, addArticleComment, updateArticle, deleteArticle } from '../services/api';
+import { getArticle, likeArticle, addArticleComment, updateArticle, deleteArticle, trackArticleRead } from '../services/api';
 
 function ArticleDetail({ user }) {
   const { id } = useParams();
@@ -13,6 +13,7 @@ function ArticleDetail({ user }) {
   const [editContent, setEditContent] = useState('');
   const [editMoodCategory, setEditMoodCategory] = useState('');
   const [editKeywords, setEditKeywords] = useState('');
+  const [newCoverImage, setNewCoverImage] = useState(null);
 
   const fetchArticle = async () => {
     try {
@@ -22,6 +23,16 @@ function ArticleDetail({ user }) {
       setEditContent(data.content);
       setEditMoodCategory(data.mood_category || '');
       setEditKeywords(data.keywords || '');
+      
+      // Track article read if user is logged in
+      if (user) {
+        try {
+          await trackArticleRead(id);
+        } catch (error) {
+          // Silently fail - tracking is not critical
+          console.log('Article read tracking failed:', error);
+        }
+      }
     } catch (error) {
       console.error('Error:', error);
     }
@@ -73,6 +84,7 @@ function ArticleDetail({ user }) {
     setEditContent(article.content);
     setEditMoodCategory(article.mood_category || '');
     setEditKeywords(article.keywords || '');
+    setNewCoverImage(null);
   };
 
   const handleSaveEdit = async (e) => {
@@ -83,18 +95,23 @@ function ArticleDetail({ user }) {
     }
 
     try {
-      await updateArticle(id, {
-        title: editTitle,
-        content: editContent,
-        mood_category: editMoodCategory,
-        keywords: editKeywords
-      });
+      const formData = new FormData();
+      formData.append('title', editTitle);
+      formData.append('content', editContent);
+      formData.append('mood_category', editMoodCategory);
+      formData.append('keywords', editKeywords);
+      if (newCoverImage) {
+        formData.append('cover_image', newCoverImage);
+      }
+      
+      await updateArticle(id, formData);
       setIsEditing(false);
+      setNewCoverImage(null);
       fetchArticle();
       alert('Article updated successfully!');
     } catch (error) {
       console.error('Error:', error);
-      alert('Failed to update article');
+      alert(error.response?.data?.error || 'Failed to update article');
     }
   };
 
@@ -118,10 +135,13 @@ function ArticleDetail({ user }) {
   return (
     <div className="container">
       <div style={{
-        background: 'white',
+        background: 'rgba(255, 255, 255, 0.25)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
         borderRadius: '20px',
         padding: '3rem',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
       }}>
         {/* Header with author info and edit/delete buttons */}
         <div style={{ 
@@ -149,9 +169,9 @@ function ArticleDetail({ user }) {
                 }}
               />
             ) : (
-              <h1 style={{ margin: 0, marginBottom: '0.5rem' }}>{article.title}</h1>
+              <h1 style={{ margin: 0, marginBottom: '0.5rem', color: '#1f2937' }}>{article.title}</h1>
             )}
-            <p style={{ margin: 0, color: '#666' }}>
+            <p style={{ margin: 0, color: '#1f2937' }}>
               By{' '}
               <span 
                 onClick={() => navigate(`/users/${article.author?.id}`)}
@@ -163,7 +183,7 @@ function ArticleDetail({ user }) {
               {new Date(article.created_at).toLocaleDateString()}
             </p>
             {!isEditing && article.keywords && (
-              <p style={{ margin: '0.5rem 0 0 0', color: '#999', fontSize: '0.9rem' }}>
+              <p style={{ margin: '0.5rem 0 0 0', color: '#4b5563', fontSize: '0.9rem' }}>
                 Keywords: {article.keywords}
               </p>
             )}
@@ -286,6 +306,34 @@ function ArticleDetail({ user }) {
 
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                Update Cover Image (optional)
+              </label>
+              <input
+                type="file"
+                accept="image/png, image/jpeg, image/jpg, image/gif, image/webp"
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    setNewCoverImage(file);
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '0.8rem',
+                  borderRadius: '10px',
+                  border: '2px solid #e0e0e0',
+                  fontSize: '1rem'
+                }}
+              />
+              {newCoverImage && (
+                <small style={{ color: '#4CAF50', display: 'block', marginTop: '0.5rem' }}>
+                  ✓ New image selected: {newCoverImage.name}
+                </small>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
                 Content
               </label>
               <textarea
@@ -305,14 +353,39 @@ function ArticleDetail({ user }) {
             </div>
           </div>
         ) : (
-          <div style={{ 
-            whiteSpace: 'pre-wrap', 
-            marginTop: '2rem',
-            lineHeight: '1.8',
-            fontSize: '1.1rem'
-          }}>
-            {article.content}
-          </div>
+          <>
+            {/* Cover Image */}
+            {article.cover_image && (
+              <div style={{ 
+                marginTop: '2rem',
+                marginBottom: '2rem',
+                borderRadius: '15px',
+                overflow: 'hidden',
+                maxHeight: '500px'
+              }}>
+                <img 
+                  src={`${process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050'}${article.cover_image}`}
+                  alt={article.title}
+                  style={{
+                    width: '100%',
+                    height: 'auto',
+                    display: 'block',
+                    objectFit: 'cover'
+                  }}
+                />
+              </div>
+            )}
+            
+            {/* Content */}
+            <div style={{ 
+              whiteSpace: 'pre-wrap', 
+              lineHeight: '1.8',
+              fontSize: '1.1rem',
+              color: '#1f2937'
+            }}>
+              {article.content}
+            </div>
+          </>
         )}
         
         {/* Action buttons (only show when not editing) */}
@@ -344,7 +417,7 @@ function ArticleDetail({ user }) {
               👍 {article.like_count} {article.like_count === 1 ? 'Like' : 'Likes'}
             </button>
             <div style={{
-              color: '#666',
+              color: '#1f2937',
               display: 'flex',
               alignItems: 'center',
               padding: '0.8rem 1.5rem'
@@ -357,7 +430,7 @@ function ArticleDetail({ user }) {
         {/* Comments section (only show when not editing) */}
         {!isEditing && (
           <div className="comments-section" style={{ marginTop: '3rem' }}>
-            <h2 style={{ marginBottom: '1.5rem' }}>Comments</h2>
+            <h2 style={{ marginBottom: '1.5rem', color: '#1f2937' }}>Comments</h2>
             
             {user && (
               <form onSubmit={handleComment} style={{ marginBottom: '2rem' }}>
@@ -370,10 +443,14 @@ function ArticleDetail({ user }) {
                     width: '100%', 
                     padding: '1rem', 
                     borderRadius: '15px',
-                    border: '2px solid #e0e0e0',
+                    background: 'rgba(255, 255, 255, 0.35)',
+                    backdropFilter: 'blur(4px)',
+                    WebkitBackdropFilter: 'blur(4px)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
                     fontSize: '1rem',
                     fontFamily: 'inherit',
-                    resize: 'vertical'
+                    resize: 'vertical',
+                    color: '#1f2937'
                   }}
                 />
                 <button 
@@ -399,12 +476,15 @@ function ArticleDetail({ user }) {
             {!user && (
               <div style={{
                 padding: '1.5rem',
-                background: '#f8f9fa',
+                background: 'rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(6px)',
+                WebkitBackdropFilter: 'blur(6px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
                 borderRadius: '15px',
                 textAlign: 'center',
                 marginBottom: '2rem'
               }}>
-                <p style={{ margin: 0 }}>
+                <p style={{ margin: 0, color: '#1f2937' }}>
                   <span 
                     onClick={() => navigate('/login')}
                     style={{ 
@@ -429,7 +509,10 @@ function ArticleDetail({ user }) {
                   style={{ 
                     marginTop: '1rem', 
                     padding: '1.5rem', 
-                    background: '#f8f9fa', 
+                    background: 'rgba(255, 255, 255, 0.25)',
+                    backdropFilter: 'blur(6px)',
+                    WebkitBackdropFilter: 'blur(6px)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
                     borderRadius: '15px'
                   }}
                 >
@@ -491,14 +574,14 @@ function ArticleDetail({ user }) {
                       {new Date(c.created_at).toLocaleDateString()}
                     </span>
                   </div>
-                  <p style={{ margin: 0, marginLeft: '48px', lineHeight: '1.6' }}>{c.content}</p>
+                  <p style={{ margin: 0, marginLeft: '48px', lineHeight: '1.6', color: '#1f2937' }}>{c.content}</p>
                 </div>
               ))
             ) : (
               <div style={{ 
                 textAlign: 'center', 
                 padding: '2rem', 
-                color: '#999' 
+                color: '#6b7280' 
               }}>
                 No comments yet. Be the first to share your thoughts!
               </div>
