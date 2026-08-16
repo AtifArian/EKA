@@ -1,6 +1,11 @@
 import os
 from datetime import timedelta
 from urllib.parse import quote_plus
+from dotenv import load_dotenv
+
+# Load .env file from backend directory if present
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(backend_dir, '.env'))
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
