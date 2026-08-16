@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from app.models import db, bcrypt
 from app.config import Config
 import os
+from urllib.parse import quote_plus
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -13,30 +14,29 @@ def create_app(config_class=Config):
     # Disable strict slashes to prevent 308 redirects that break CORS preflight
     app.url_map.strict_slashes = False
     
-    # Load environment variables from backend/.env if present (for local dev)
+    # Load environment variables from backend/.env (local dev & Vercel)
+    # Use __file__ based path so it works in both contexts
     try:
-        backend_dir = os.path.dirname(app.root_path)  # points to backend/
+        backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # backend/
         load_dotenv(os.path.join(backend_dir, '.env'))
     except Exception:
         pass
     
-    # Override config with environment variables for Railway deployment
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', app.config['SECRET_KEY'])
-    app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', app.config['JWT_SECRET_KEY'])
-    
-    # Use PostgreSQL in production if DATABASE_URL is set (Railway provides this)
-    database_url = os.environ.get('DATABASE_URL')
-    if database_url:
-        # Railway provides postgres:// but SQLAlchemy needs postgresql://
-        if database_url.startswith('postgres://'):
-            database_url = database_url.replace('postgres://', 'postgresql://', 1)
-        app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    # Re-apply config after env vars are loaded (config.py reads PG* at import time,
+    # but .env may not have been loaded yet). Rebuild URI if needed.
+    pghost = os.environ.get('PGHOST')
+    if pghost:
+        pguser = os.environ.get('PGUSER', 'postgres')
+        pgpassword = quote_plus(os.environ.get('PGPASSWORD', ''))
+        pgdatabase = os.environ.get('PGDATABASE', 'postgres')
+        pgport = os.environ.get('PGPORT', '5432')
+        app.config['SQLALCHEMY_DATABASE_URI'] = (
+            f"postgresql://{pguser}:{pgpassword}@{pghost}:{pgport}/{pgdatabase}"
+        )
     else:
         # Ensure SQLite path is absolute for local development
         db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
         if db_uri.startswith('sqlite:///') and not db_uri.startswith('sqlite:////'):
-            # Convert to absolute path relative to backend folder
-            backend_dir = os.path.dirname(app.root_path)  # points to backend/
             db_file = db_uri.replace('sqlite:///', '')
             abs_db_path = os.path.abspath(os.path.join(backend_dir, db_file))
             app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{abs_db_path}'
@@ -56,14 +56,14 @@ def create_app(config_class=Config):
         "http://127.0.0.1:5500"
     ]
     
-    # Add custom frontend URL from environment variable (for Railway/other deployments)
+    # Add custom frontend URL from environment variable (for Vercel/other deployments)
     frontend_url = os.environ.get('FRONTEND_URL')
     if frontend_url and frontend_url not in allowed_origins:
         allowed_origins.append(frontend_url)
     
     # Configure CORS with proper settings for production
     # For local testing with Postman, use origins="*"
-    is_local_dev = os.environ.get('FLASK_ENV') == 'development' or not database_url
+    is_local_dev = os.environ.get('FLASK_ENV') == 'development' or not pghost
     
     CORS(app, 
          origins="*" if is_local_dev else allowed_origins,
@@ -104,7 +104,7 @@ def create_app(config_class=Config):
         os.makedirs(os.path.join(upload_folder, 'articles'), exist_ok=True)
     except Exception as e:
         print(f"Warning: Could not create upload directories: {e}")
-        # In production (Railway), may need to use cloud storage instead
+        # In production (Vercel), the filesystem is read-only; use Supabase Storage instead
     
     # Register blueprints
     from app.routes.auth import auth_bp
