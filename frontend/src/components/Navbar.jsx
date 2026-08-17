@@ -16,16 +16,13 @@ function Navbar({ user, onLogout }) {
     <nav className="navbar" aria-label="Main Navigation">
       <Link to="/" className="navbar-brand" aria-label="EKA Home">
         <div className="navbar-logo">
-          <picture>
-            <source srcSet="/logo.webp" type="image/webp" />
-            <img
-              src="/logo.png"
-              alt="EKA Mental Wellness Logo"
-              width="44"
-              height="44"
-              style={{ width: '44px', height: '44px', objectFit: 'contain', borderRadius: '50%' }}
-            />
-          </picture>
+          <img
+            src="/logo.webp"
+            alt="EKA Mental Wellness Logo"
+            width="44"
+            height="44"
+            style={{ width: '44px', height: '44px', objectFit: 'contain', borderRadius: '50%' }}
+          />
         </div>
         <div>
           <span style={{

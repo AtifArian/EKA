@@ -22,19 +22,19 @@ function Home({ user }) {
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef(null);
 
-  // Optimized Slides with WebP + PNG fallback & descriptive alt text
+  // Optimized Slides with WebP & descriptive alt text
   const slides = [
-    { id: 1, webp: '/slideshow/1.webp', png: '/slideshow/1.png', alt: 'Mental health awareness and mindful healing with EKA' },
-    { id: 2, webp: '/slideshow/2.webp', png: '/slideshow/2.png', alt: 'Connecting with mental wellness professionals and verified doctors' },
-    { id: 3, webp: '/slideshow/3.webp', png: '/slideshow/3.png', alt: 'Daily mood tracking and personalized journaling' },
-    { id: 4, webp: '/slideshow/4.webp', png: '/slideshow/4.png', alt: 'Supportive community for mental wellness and empathy' },
-    { id: 5, webp: '/slideshow/5.webp', png: '/slideshow/5.png', alt: 'Safe, judgment-free mental healthcare space for all' },
-    { id: 6, webp: '/slideshow/6.webp', png: '/slideshow/6.png', alt: 'Empowering self-care and emotional resilience' },
-    { id: 7, webp: '/slideshow/7.webp', png: '/slideshow/7.png', alt: 'Holistic wellness guidance and expert resources' },
-    { id: 8, webp: '/slideshow/8.webp', png: '/slideshow/8.png', alt: 'Compassionate crisis intervention and urgent support' },
-    { id: 9, webp: '/slideshow/9.webp', png: '/slideshow/9.png', alt: 'Growth, kindness, and personal wellbeing journeys' },
-    { id: 10, webp: '/slideshow/10.webp', png: '/slideshow/10.png', alt: 'Professional therapy and doctor consultation' },
-    { id: 11, webp: '/slideshow/11.webp', png: '/slideshow/11.png', alt: 'Every mind matters - start your mental wellness journey today' },
+    { id: 1, src: '/slideshow/1.webp', alt: 'Mental health awareness and mindful healing with EKA' },
+    { id: 2, src: '/slideshow/2.webp', alt: 'Connecting with mental wellness professionals and verified doctors' },
+    { id: 3, src: '/slideshow/3.webp', alt: 'Daily mood tracking and personalized journaling' },
+    { id: 4, src: '/slideshow/4.webp', alt: 'Supportive community for mental wellness and empathy' },
+    { id: 5, src: '/slideshow/5.webp', alt: 'Safe, judgment-free mental healthcare space for all' },
+    { id: 6, src: '/slideshow/6.webp', alt: 'Empowering self-care and emotional resilience' },
+    { id: 7, src: '/slideshow/7.webp', alt: 'Holistic wellness guidance and expert resources' },
+    { id: 8, src: '/slideshow/8.webp', alt: 'Compassionate crisis intervention and urgent support' },
+    { id: 9, src: '/slideshow/9.webp', alt: 'Growth, kindness, and personal wellbeing journeys' },
+    { id: 10, src: '/slideshow/10.webp', alt: 'Professional therapy and doctor consultation' },
+    { id: 11, src: '/slideshow/11.webp', alt: 'Every mind matters - start your mental wellness journey today' },
   ];
 
   const nextSlide = useCallback(() => {
@@ -154,18 +154,15 @@ function Home({ user }) {
                 aria-hidden={!isActive}
               >
                 {shouldRenderImage ? (
-                  <picture>
-                    <source srcSet={slide.webp} type="image/webp" />
-                    <img
-                      src={slide.png}
-                      alt={slide.alt}
-                      width="1920"
-                      height="1080"
-                      loading={index === 0 ? 'eager' : 'lazy'}
-                      fetchPriority={index === 0 ? 'high' : 'auto'}
-                      decoding="async"
-                    />
-                  </picture>
+                  <img
+                    src={slide.src}
+                    alt={slide.alt}
+                    width="1920"
+                    height="1080"
+                    loading={index === 0 ? 'eager' : 'lazy'}
+                    fetchPriority={index === 0 ? 'high' : 'auto'}
+                    decoding="async"
+                  />
                 ) : null}
               </div>
             );
