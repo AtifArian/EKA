@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import db, Journal, JournalHeart, JournalComment
 from app.utils.sentiment_analysis import analyze_sentiment, analyze_emotion
+from sqlalchemy.orm import joinedload
 
 journals_bp = Blueprint('journals', __name__)
 
@@ -19,7 +20,7 @@ def get_journals():
             (Journal.content.ilike(f'%{search}%'))
         )
     
-    journals = query.all()
+    journals = query.options(joinedload(Journal.author)).all()
     
     if sort_by == 'hearts':
         journals = sorted(journals, key=lambda j: j.heart_count(), reverse=True)
@@ -31,7 +32,7 @@ def get_journals():
 @journals_bp.route('/top', methods=['GET'])
 def get_top_journals():
     """Get journals with most hearts for slideshow"""
-    journals = Journal.query.filter_by(is_public=True).all()
+    journals = Journal.query.filter_by(is_public=True).options(joinedload(Journal.author)).all()
     top_journals = sorted(journals, key=lambda j: j.heart_count(), reverse=True)[:10]
     
     return jsonify([journal.to_dict() for journal in top_journals]), 200
@@ -65,7 +66,7 @@ def get_journal(journal_id):
 def get_my_journals():
     current_user_id = int(get_jwt_identity())
     
-    journals = Journal.query.filter_by(user_id=current_user_id).order_by(
+    journals = Journal.query.filter_by(user_id=current_user_id).options(joinedload(Journal.author)).order_by(
         Journal.created_at.desc()
     ).all()
     
@@ -233,6 +234,6 @@ def get_user_journals(user_id):
     journals = Journal.query.filter_by(
         user_id=user_id,
         is_public=True
-    ).order_by(Journal.created_at.desc()).all()
+    ).options(joinedload(Journal.author)).order_by(Journal.created_at.desc()).all()
     
     return jsonify([journal.to_dict() for journal in journals]), 200

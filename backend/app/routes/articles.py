@@ -4,6 +4,7 @@ from app.models import db, Article, ArticleLike, ArticleComment, Doctor
 from app.utils.decorators import doctor_required
 from app.utils.storage import upload_file_to_storage, delete_file_from_storage
 import os
+from sqlalchemy.orm import joinedload
 
 articles_bp = Blueprint('articles', __name__)
 
@@ -24,7 +25,7 @@ def get_articles():
         for keyword in keyword_list:
             query = query.filter(Article.keywords.ilike(f'%{keyword}%'))
     
-    articles = query.all()
+    articles = query.options(joinedload(Article.author).joinedload(Doctor.user)).all()
     
     if sort_by == 'highest':
         articles = sorted(articles, key=lambda a: a.like_count(), reverse=True)
@@ -36,7 +37,7 @@ def get_articles():
 @articles_bp.route('/top', methods=['GET'])
 def get_top_articles():
     """Get articles with most likes for featured section"""
-    articles = Article.query.all()
+    articles = Article.query.options(joinedload(Article.author).joinedload(Doctor.user)).all()
     top_articles = sorted(articles, key=lambda a: a.like_count(), reverse=True)[:10]
     
     return jsonify([article.to_dict(include_content=True) for article in top_articles]), 200
@@ -77,7 +78,7 @@ def get_my_articles():
     if not doctor:
         return jsonify({'error': 'Doctor profile not found'}), 404
     
-    articles = Article.query.filter_by(doctor_id=doctor.id).order_by(
+    articles = Article.query.filter_by(doctor_id=doctor.id).options(joinedload(Article.author).joinedload(Doctor.user)).order_by(
         Article.created_at.desc()
     ).all()
     
