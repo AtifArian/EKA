@@ -11,6 +11,47 @@
       "use": "@vercel/python"
     }
   ],
+  "headers": [
+    {
+      "source": "/(.*\\.(js|css|ico|json|png|jpg|jpeg|svg|txt|xml|webp|woff|woff2|ttf))",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/slideshow/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    }
+  ],
   "routes": [
     {
       "src": "/api/(.*)",
@@ -21,7 +62,11 @@
       "dest": "/frontend/static/$1"
     },
     {
-      "src": "/(.*\\.(js|css|ico|json|png|jpg|jpeg|svg|txt|xml))",
+      "src": "/slideshow/(.*)",
+      "dest": "/frontend/slideshow/$1"
+    },
+    {
+      "src": "/(.*\\.(js|css|ico|json|png|jpg|jpeg|svg|txt|xml|webp|woff|woff2|ttf))",
       "dest": "/frontend/$1"
     },
     {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Chatbot from '../components/Chatbot';
 import ArticleTile from '../components/ArticleTile';
@@ -19,30 +19,44 @@ function Home({ user }) {
   const [donationSuccess, setDonationSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const timerRef = useRef(null);
 
-  // Slideshow images - update these paths once you copy the images
+  // Optimized Slides with WebP + PNG fallback & descriptive alt text
   const slides = [
-    '/slideshow/1.png',
-    '/slideshow/2.png',
-    '/slideshow/3.png',
-    '/slideshow/4.png',
-    '/slideshow/5.png',
-    '/slideshow/6.png',
-    '/slideshow/7.png',
-    '/slideshow/8.png',
-    '/slideshow/9.png',
-    '/slideshow/10.png',
-    '/slideshow/11.png'
+    { id: 1, webp: '/slideshow/1.webp', png: '/slideshow/1.png', alt: 'Mental health awareness and mindful healing with EKA' },
+    { id: 2, webp: '/slideshow/2.webp', png: '/slideshow/2.png', alt: 'Connecting with mental wellness professionals and verified doctors' },
+    { id: 3, webp: '/slideshow/3.webp', png: '/slideshow/3.png', alt: 'Daily mood tracking and personalized journaling' },
+    { id: 4, webp: '/slideshow/4.webp', png: '/slideshow/4.png', alt: 'Supportive community for mental wellness and empathy' },
+    { id: 5, webp: '/slideshow/5.webp', png: '/slideshow/5.png', alt: 'Safe, judgment-free mental healthcare space for all' },
+    { id: 6, webp: '/slideshow/6.webp', png: '/slideshow/6.png', alt: 'Empowering self-care and emotional resilience' },
+    { id: 7, webp: '/slideshow/7.webp', png: '/slideshow/7.png', alt: 'Holistic wellness guidance and expert resources' },
+    { id: 8, webp: '/slideshow/8.webp', png: '/slideshow/8.png', alt: 'Compassionate crisis intervention and urgent support' },
+    { id: 9, webp: '/slideshow/9.webp', png: '/slideshow/9.png', alt: 'Growth, kindness, and personal wellbeing journeys' },
+    { id: 10, webp: '/slideshow/10.webp', png: '/slideshow/10.png', alt: 'Professional therapy and doctor consultation' },
+    { id: 11, webp: '/slideshow/11.webp', png: '/slideshow/11.png', alt: 'Every mind matters - start your mental wellness journey today' },
   ];
 
-  // Auto-advance slideshow
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 5000); // Change slide every 5 seconds
-
-    return () => clearInterval(interval);
+  const nextSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev + 1) % slides.length);
   }, [slides.length]);
+
+  const prevSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  }, [slides.length]);
+
+  // Auto-advance slideshow with pause on hover
+  useEffect(() => {
+    if (isPaused) return;
+
+    timerRef.current = setInterval(() => {
+      nextSlide();
+    }, 6000);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isPaused, nextSlide]);
 
   // Fetch featured articles
   useEffect(() => {
@@ -52,7 +66,7 @@ function Home({ user }) {
   const fetchFeaturedArticles = async () => {
     try {
       const data = await getTopArticles();
-      setFeaturedArticles(data.slice(0, 3)); // Show top 3 articles on home page
+      setFeaturedArticles(data.slice(0, 3));
     } catch (error) {
       console.error('Error fetching featured articles:', error);
     }
@@ -79,7 +93,6 @@ function Home({ user }) {
         is_anonymous: isAnonymous
       };
 
-      // Add optional fields if not anonymous
       if (!isAnonymous) {
         if (donorName) donationData.donor_name = donorName;
         if (donorEmail) donationData.donor_email = donorEmail;
@@ -115,186 +128,294 @@ function Home({ user }) {
 
   return (
     <div style={{ padding: 0 }}>
-      {/* Automatic Slideshow */}
-      <div className="slideshow-container">
-        {slides.map((slide, index) => (
-          <div
-            key={index}
-            className={`slide ${index === currentSlide ? 'active' : ''}`}
-          >
-            <img src={slide} alt={`Slide ${index + 1}`} />
-          </div>
-        ))}
-        <div className="slideshow-dots">
+      {/* Hero Slideshow Section */}
+      <section
+        className="slideshow-container"
+        aria-label="Mental Wellness Highlights"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        onFocus={() => setIsPaused(true)}
+        onBlur={() => setIsPaused(false)}
+      >
+        <div className="slideshow-inner">
+          {slides.map((slide, index) => {
+            const isActive = index === currentSlide;
+            // Only render image for active, previous, and next slides to save bandwidth & memory
+            const shouldRenderImage =
+              index === 0 ||
+              isActive ||
+              index === (currentSlide + 1) % slides.length ||
+              index === (currentSlide - 1 + slides.length) % slides.length;
+
+            return (
+              <div
+                key={slide.id}
+                className={`slide ${isActive ? 'active' : ''}`}
+                aria-hidden={!isActive}
+              >
+                {shouldRenderImage ? (
+                  <picture>
+                    <source srcSet={slide.webp} type="image/webp" />
+                    <img
+                      src={slide.png}
+                      alt={slide.alt}
+                      width="1920"
+                      height="1080"
+                      loading={index === 0 ? 'eager' : 'lazy'}
+                      fetchPriority={index === 0 ? 'high' : 'auto'}
+                      decoding="async"
+                    />
+                  </picture>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Previous / Next Navigation Arrows */}
+        <button
+          type="button"
+          className="slideshow-arrow prev"
+          onClick={prevSlide}
+          aria-label="Previous slide"
+          title="Previous slide"
+        >
+          ‹
+        </button>
+        <button
+          type="button"
+          className="slideshow-arrow next"
+          onClick={nextSlide}
+          aria-label="Next slide"
+          title="Next slide"
+        >
+          ›
+        </button>
+
+        {/* Indicator Dots */}
+        <div className="slideshow-dots" role="tablist" aria-label="Slideshow slide selectors">
           {slides.map((_, index) => (
-            <div
+            <button
+              type="button"
               key={index}
+              role="tab"
+              aria-selected={index === currentSlide}
+              aria-label={`Go to slide ${index + 1}`}
               className={`dot ${index === currentSlide ? 'active' : ''}`}
               onClick={() => setCurrentSlide(index)}
             />
           ))}
         </div>
-      </div>
+      </section>
 
-      {/* Slogan */}
-      <div className="slogan-gradient-wave" style={{
-        textAlign: 'center',
-        padding: '2rem 1rem',
-        fontSize: '3rem',
-        fontWeight: 'bold',
-        letterSpacing: '2px'
-      }}>
-        EASE YOUR MIND . SPREAD YOUR KINDNESS . GROW YOUR AWARENESS
+      {/* Main Slogan & Value Proposition */}
+      <div style={{ textAlign: 'center', padding: '1rem 1rem 2rem' }}>
+        <h1 className="slogan-gradient-wave">
+          EASE YOUR MIND · SPREAD YOUR KINDNESS · GROW YOUR AWARENESS
+        </h1>
+        <p
+          style={{
+            color: 'rgba(255, 255, 255, 0.92)',
+            fontSize: '1.15rem',
+            maxWidth: '780px',
+            margin: '0.75rem auto 0',
+            fontWeight: '500',
+            lineHeight: '1.6'
+          }}
+        >
+          Your safe haven for holistic mental healthcare. Connect with verified doctors, track your emotional wellness, and share your journey with an empathetic community.
+        </p>
       </div>
 
       <div className="container">
         {/* Featured Articles Section */}
-        <div style={{ marginTop: '3rem' }}>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            marginBottom: '1.5rem'
-          }}>
-            <h2 style={{ color: 'white', margin: 0 }}>⭐ Featured Articles</h2>
+        <section aria-labelledby="featured-articles-heading" style={{ marginTop: '2rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '1.5rem',
+              flexWrap: 'wrap',
+              gap: '1rem'
+            }}
+          >
+            <h2 id="featured-articles-heading" style={{ color: 'white', margin: 0, fontSize: '1.85rem' }}>
+              ⭐ Featured Articles
+            </h2>
             <button
               onClick={() => navigate('/articles')}
+              aria-label="View all wellness articles"
               style={{
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: 'white',
                 border: 'none',
-                padding: '0.7rem 1.5rem',
+                padding: '0.75rem 1.75rem',
                 borderRadius: '25px',
                 cursor: 'pointer',
                 fontWeight: '600',
                 fontSize: '0.95rem',
-                transition: 'transform 0.2s'
+                boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+                transition: 'transform 0.2s, box-shadow 0.2s'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.04)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.25)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.15)';
+              }}
             >
               View All Articles →
             </button>
           </div>
-          
+
           {featuredArticles.length > 0 ? (
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-              gap: '1.5rem',
-              marginBottom: '2rem'
-            }}>
-              {featuredArticles.map(article => (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: '1.5rem',
+                marginBottom: '2rem'
+              }}
+            >
+              {featuredArticles.map((article) => (
                 <ArticleTile key={article.id} article={article} />
               ))}
             </div>
           ) : (
-            <div style={{
-              background: 'white',
-              borderRadius: '20px',
-              padding: '3rem',
-              textAlign: 'center',
-              color: '#999'
-            }}>
-              <p>No featured articles yet. Check back soon!</p>
+            <div
+              style={{
+                background: 'white',
+                borderRadius: '20px',
+                padding: '3rem',
+                textAlign: 'center',
+                color: '#4B5563',
+                boxShadow: 'var(--shadow-md)'
+              }}
+            >
+              <p style={{ margin: 0, fontSize: '1.05rem' }}>
+                No featured articles yet. Check back soon for insightful guides!
+              </p>
             </div>
           )}
-        </div>
+        </section>
 
-        {/* Donation Section */}
-        <div style={{
-          marginTop: '4rem',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          borderRadius: '25px',
-          padding: '3rem',
-          color: 'white',
-          textAlign: 'center',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.15)'
-        }}>
-          <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem', fontWeight: '600' }}>
+        {/* Donation & Community Impact Section */}
+        <section
+          aria-labelledby="donation-heading"
+          style={{
+            marginTop: '3.5rem',
+            marginBottom: '3rem',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '25px',
+            padding: '3.5rem 2rem',
+            color: 'white',
+            textAlign: 'center',
+            boxShadow: '0 12px 36px rgba(0,0,0,0.2)'
+          }}
+        >
+          <h2 id="donation-heading" style={{ fontSize: '2.4rem', marginBottom: '1rem', fontWeight: '700' }}>
             Support Mental Health Awareness
           </h2>
-          <p style={{ fontSize: '1.1rem', maxWidth: '700px', margin: '0 auto 2rem', lineHeight: '1.6' }}>
-            Your generous donation helps us provide free mental health resources, 
-            support crisis intervention services, and maintain a safe platform for 
-            those seeking help. Every contribution makes a difference in someone's life.
+          <p
+            style={{
+              fontSize: '1.1rem',
+              maxWidth: '720px',
+              margin: '0 auto 2.5rem',
+              lineHeight: '1.7',
+              opacity: 0.95
+            }}
+          >
+            Your generous donation helps us provide free mental health resources, support crisis intervention services, and maintain a safe platform for those seeking help. Every contribution makes a difference in someone's life.
           </p>
-          <div style={{ 
-            display: 'flex', 
-            gap: '2rem', 
-            justifyContent: 'center', 
-            flexWrap: 'wrap',
-            marginBottom: '2rem'
-          }}>
-            <div style={{ flex: '1', minWidth: '200px', maxWidth: '250px' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🧠</div>
-              <h3 style={{ marginBottom: '0.5rem' }}>Free Resources</h3>
-              <p style={{ fontSize: '0.9rem', opacity: '0.9' }}>
-                Keep articles and tools accessible to everyone
+
+          <div
+            style={{
+              display: 'flex',
+              gap: '2rem',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+              marginBottom: '2.5rem'
+            }}
+          >
+            <div style={{ flex: '1', minWidth: '220px', maxWidth: '270px' }}>
+              <div style={{ fontSize: '2.8rem', marginBottom: '0.5rem' }} role="img" aria-label="Brain icon">🧠</div>
+              <h3 style={{ marginBottom: '0.5rem', fontSize: '1.25rem', fontWeight: '600' }}>Free Resources</h3>
+              <p style={{ fontSize: '0.92rem', opacity: 0.9, lineHeight: '1.5' }}>
+                Keep articles, tests, and self-care tools accessible to everyone in need
               </p>
             </div>
-            <div style={{ flex: '1', minWidth: '200px', maxWidth: '250px' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>💙</div>
-              <h3 style={{ marginBottom: '0.5rem' }}>Crisis Support</h3>
-              <p style={{ fontSize: '0.9rem', opacity: '0.9' }}>
-                Fund emergency mental health interventions
+            <div style={{ flex: '1', minWidth: '220px', maxWidth: '270px' }}>
+              <div style={{ fontSize: '2.8rem', marginBottom: '0.5rem' }} role="img" aria-label="Heart icon">💙</div>
+              <h3 style={{ marginBottom: '0.5rem', fontSize: '1.25rem', fontWeight: '600' }}>Crisis Support</h3>
+              <p style={{ fontSize: '0.92rem', opacity: 0.9, lineHeight: '1.5' }}>
+                Fund 24/7 emergency mental health interventions and doctor consultations
               </p>
             </div>
-            <div style={{ flex: '1', minWidth: '200px', maxWidth: '250px' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🤝</div>
-              <h3 style={{ marginBottom: '0.5rem' }}>Community Care</h3>
-              <p style={{ fontSize: '0.9rem', opacity: '0.9' }}>
-                Build a supportive, judgment-free space
+            <div style={{ flex: '1', minWidth: '220px', maxWidth: '270px' }}>
+              <div style={{ fontSize: '2.8rem', marginBottom: '0.5rem' }} role="img" aria-label="Community handshake icon">🤝</div>
+              <h3 style={{ marginBottom: '0.5rem', fontSize: '1.25rem', fontWeight: '600' }}>Community Care</h3>
+              <p style={{ fontSize: '0.92rem', opacity: 0.9, lineHeight: '1.5' }}>
+                Build a supportive, stigma-free environment for healing and recovery
               </p>
             </div>
           </div>
+
           <button
+            type="button"
             onClick={() => setShowDonationModal(true)}
+            aria-label="Open donation form"
             style={{
               background: 'white',
               color: '#667eea',
               border: 'none',
-              padding: '1rem 3rem',
-              fontSize: '1.1rem',
-              fontWeight: '600',
+              padding: '1.1rem 3.5rem',
+              fontSize: '1.15rem',
+              fontWeight: '700',
               borderRadius: '50px',
               cursor: 'pointer',
-              boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-              transition: 'all 0.3s'
+              boxShadow: '0 6px 20px rgba(0,0,0,0.22)',
+              transition: 'all 0.25s ease'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-3px)';
-              e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.3)';
+              e.currentTarget.style.transform = 'translateY(-3px) scale(1.02)';
+              e.currentTarget.style.boxShadow = '0 8px 25px rgba(0,0,0,0.3)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
+              e.currentTarget.style.transform = 'translateY(0) scale(1)';
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.22)';
             }}
           >
             Donate Now
           </button>
-        </div>
+        </section>
 
-        {/* Donation Modal */}
+        {/* Accessible Donation Modal */}
         {showDonationModal && (
-          <div 
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="donation-modal-title"
             style={{
               position: 'fixed',
               top: 0,
               left: 0,
               right: 0,
               bottom: 0,
-              background: 'rgba(0,0,0,0.6)',
+              background: 'rgba(0,0,0,0.65)',
+              backdropFilter: 'blur(4px)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              zIndex: 1000,
+              zIndex: 2000,
               padding: '1rem',
               overflowY: 'auto'
             }}
             onClick={() => setShowDonationModal(false)}
           >
-            <div 
+            <div
               style={{
                 background: 'white',
                 borderRadius: '20px',
@@ -303,7 +424,7 @@ function Home({ user }) {
                 width: '100%',
                 maxHeight: '90vh',
                 overflowY: 'auto',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
                 position: 'relative',
                 margin: 'auto'
               }}
@@ -312,39 +433,64 @@ function Home({ user }) {
               {!donationSuccess ? (
                 <>
                   <button
+                    type="button"
                     onClick={() => setShowDonationModal(false)}
+                    aria-label="Close donation modal"
                     style={{
                       position: 'absolute',
                       top: '1rem',
                       right: '1rem',
-                      background: 'none',
+                      background: '#f3f4f6',
                       border: 'none',
-                      fontSize: '1.5rem',
+                      borderRadius: '50%',
+                      width: '36px',
+                      height: '36px',
+                      fontSize: '1.25rem',
                       cursor: 'pointer',
-                      color: '#999'
+                      color: '#4B5563',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#e5e7eb')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = '#f3f4f6')}
+                  >
+                    ✕
+                  </button>
+                  <h2
+                    id="donation-modal-title"
+                    style={{
+                      marginBottom: '1.5rem',
+                      color: '#667eea',
+                      textAlign: 'center',
+                      fontSize: '1.85rem',
+                      fontWeight: '700'
                     }}
                   >
-                    ×
-                  </button>
-                  <h2 style={{ marginBottom: '1.5rem', color: '#667eea', textAlign: 'center', fontSize: '2rem' }}>
                     Make a Donation
                   </h2>
-                  
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#333', fontWeight: '500' }}>
+
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <label
+                      htmlFor="donation-amount"
+                      style={{ display: 'block', marginBottom: '0.5rem', color: '#1F2937', fontWeight: '600' }}
+                    >
                       Donation Amount (BDT) *
                     </label>
                     <input
+                      id="donation-amount"
                       type="number"
                       min="1"
                       step="1"
+                      required
                       value={donationAmount}
                       onChange={(e) => setDonationAmount(e.target.value)}
-                      placeholder="Enter amount"
+                      placeholder="e.g. 500"
                       style={{
                         width: '100%',
-                        padding: '0.8rem',
-                        border: '2px solid #e0e0e0',
+                        padding: '0.85rem',
+                        border: '2px solid #D1D5DB',
                         borderRadius: '10px',
                         fontSize: '1rem',
                         boxSizing: 'border-box'
@@ -352,44 +498,53 @@ function Home({ user }) {
                     />
                   </div>
 
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#333', fontWeight: '500' }}>
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <label
+                      htmlFor="payment-method"
+                      style={{ display: 'block', marginBottom: '0.5rem', color: '#1F2937', fontWeight: '600' }}
+                    >
                       Payment Method *
                     </label>
                     <select
+                      id="payment-method"
                       value={paymentMethod}
                       onChange={(e) => setPaymentMethod(e.target.value)}
                       style={{
                         width: '100%',
-                        padding: '0.8rem',
-                        border: '2px solid #e0e0e0',
+                        padding: '0.85rem',
+                        border: '2px solid #D1D5DB',
                         borderRadius: '10px',
                         fontSize: '1rem',
                         boxSizing: 'border-box',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        background: 'white'
                       }}
                     >
                       <option value="bkash">bKash</option>
                       <option value="nagad">Nagad</option>
                       <option value="rocket">Rocket</option>
                       <option value="bank">Bank Transfer</option>
-                      <option value="card">Credit/Debit Card</option>
+                      <option value="card">Credit / Debit Card</option>
                     </select>
                   </div>
 
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#333', fontWeight: '500' }}>
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <label
+                      htmlFor="donor-phone"
+                      style={{ display: 'block', marginBottom: '0.5rem', color: '#1F2937', fontWeight: '600' }}
+                    >
                       Phone Number (Optional)
                     </label>
                     <input
+                      id="donor-phone"
                       type="tel"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
                       placeholder="01XXXXXXXXX"
                       style={{
                         width: '100%',
-                        padding: '0.8rem',
-                        border: '2px solid #e0e0e0',
+                        padding: '0.85rem',
+                        border: '2px solid #D1D5DB',
                         borderRadius: '10px',
                         fontSize: '1rem',
                         boxSizing: 'border-box'
@@ -397,19 +552,23 @@ function Home({ user }) {
                     />
                   </div>
 
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#333', fontWeight: '500' }}>
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <label
+                      htmlFor="transaction-id"
+                      style={{ display: 'block', marginBottom: '0.5rem', color: '#1F2937', fontWeight: '600' }}
+                    >
                       Transaction ID (Optional)
                     </label>
                     <input
+                      id="transaction-id"
                       type="text"
                       value={transactionId}
                       onChange={(e) => setTransactionId(e.target.value)}
-                      placeholder="Transaction ID from payment"
+                      placeholder="Transaction ID from payment receipt"
                       style={{
                         width: '100%',
-                        padding: '0.8rem',
-                        border: '2px solid #e0e0e0',
+                        padding: '0.85rem',
+                        border: '2px solid #D1D5DB',
                         borderRadius: '10px',
                         fontSize: '1rem',
                         boxSizing: 'border-box'
@@ -417,9 +576,13 @@ function Home({ user }) {
                     />
                   </div>
 
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginBottom: '1rem' }}>
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <label
+                      htmlFor="anonymous-check"
+                      style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginBottom: '1rem' }}
+                    >
                       <input
+                        id="anonymous-check"
                         type="checkbox"
                         checked={isAnonymous}
                         onChange={(e) => {
@@ -429,26 +592,30 @@ function Home({ user }) {
                             setDonorEmail('');
                           }
                         }}
-                        style={{ marginRight: '0.5rem', cursor: 'pointer' }}
+                        style={{ marginRight: '0.6rem', cursor: 'pointer', width: '18px', height: '18px' }}
                       />
-                      <span style={{ color: '#333', fontWeight: '500' }}>Donate Anonymously</span>
+                      <span style={{ color: '#1F2937', fontWeight: '600' }}>Donate Anonymously</span>
                     </label>
 
                     {!isAnonymous && (
                       <>
                         <div style={{ marginBottom: '1rem' }}>
-                          <label style={{ display: 'block', marginBottom: '0.5rem', color: '#333', fontWeight: '500' }}>
+                          <label
+                            htmlFor="donor-name"
+                            style={{ display: 'block', marginBottom: '0.5rem', color: '#1F2937', fontWeight: '600' }}
+                          >
                             Your Name (Optional)
                           </label>
                           <input
+                            id="donor-name"
                             type="text"
                             value={donorName}
                             onChange={(e) => setDonorName(e.target.value)}
                             placeholder="Enter your name"
                             style={{
                               width: '100%',
-                              padding: '0.8rem',
-                              border: '2px solid #e0e0e0',
+                              padding: '0.85rem',
+                              border: '2px solid #D1D5DB',
                               borderRadius: '10px',
                               fontSize: '1rem',
                               boxSizing: 'border-box'
@@ -456,18 +623,22 @@ function Home({ user }) {
                           />
                         </div>
                         <div style={{ marginBottom: '1rem' }}>
-                          <label style={{ display: 'block', marginBottom: '0.5rem', color: '#333', fontWeight: '500' }}>
+                          <label
+                            htmlFor="donor-email"
+                            style={{ display: 'block', marginBottom: '0.5rem', color: '#1F2937', fontWeight: '600' }}
+                          >
                             Your Email (Optional)
                           </label>
                           <input
+                            id="donor-email"
                             type="email"
                             value={donorEmail}
                             onChange={(e) => setDonorEmail(e.target.value)}
-                            placeholder="Enter your email"
+                            placeholder="Enter your email address"
                             style={{
                               width: '100%',
-                              padding: '0.8rem',
-                              border: '2px solid #e0e0e0',
+                              padding: '0.85rem',
+                              border: '2px solid #D1D5DB',
                               borderRadius: '10px',
                               fontSize: '1rem',
                               boxSizing: 'border-box'
@@ -479,18 +650,22 @@ function Home({ user }) {
                   </div>
 
                   <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#333', fontWeight: '500' }}>
+                    <label
+                      htmlFor="donor-message"
+                      style={{ display: 'block', marginBottom: '0.5rem', color: '#1F2937', fontWeight: '600' }}
+                    >
                       Message (Optional)
                     </label>
                     <textarea
+                      id="donor-message"
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
-                      placeholder="Leave a message..."
+                      placeholder="Words of encouragement..."
                       rows="3"
                       style={{
                         width: '100%',
-                        padding: '0.8rem',
-                        border: '2px solid #e0e0e0',
+                        padding: '0.85rem',
+                        border: '2px solid #D1D5DB',
                         borderRadius: '10px',
                         fontSize: '1rem',
                         boxSizing: 'border-box',
@@ -500,34 +675,39 @@ function Home({ user }) {
                   </div>
 
                   <button
+                    type="button"
                     onClick={handleDonation}
                     disabled={isSubmitting}
                     style={{
                       width: '100%',
                       padding: '1rem',
-                      background: isSubmitting ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      background: isSubmitting
+                        ? '#9CA3AF'
+                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                       color: 'white',
                       border: 'none',
-                      borderRadius: '10px',
+                      borderRadius: '12px',
                       fontSize: '1.1rem',
-                      fontWeight: '600',
-                      cursor: isSubmitting ? 'not-allowed' : 'pointer'
+                      fontWeight: '700',
+                      cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+                      transition: 'all 0.2s'
                     }}
                   >
-                    {isSubmitting ? 'Processing...' : 'Complete Donation'}
+                    {isSubmitting ? 'Processing Donation...' : 'Complete Donation'}
                   </button>
                 </>
               ) : (
                 <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-                  <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>✓</div>
-                  <h2 style={{ color: '#4CAF50', marginBottom: '1rem' }}>Thank You!</h2>
-                  <p style={{ color: '#666', fontSize: '1.1rem' }}>
-                    Your donation of ৳{parseFloat(donationAmount).toFixed(2)} has been received.
+                  <div style={{ fontSize: '3.5rem', color: '#10B981', marginBottom: '1rem' }}>✓</div>
+                  <h2 style={{ color: '#10B981', marginBottom: '1rem', fontSize: '2rem' }}>Thank You!</h2>
+                  <p style={{ color: '#374151', fontSize: '1.15rem' }}>
+                    Your donation of ৳{parseFloat(donationAmount).toFixed(2)} has been received with deep gratitude.
                   </p>
-                  <p style={{ color: '#999', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                    {isAnonymous ? 'Anonymous Donor' : donorName || 'Anonymous Donor'}
+                  <p style={{ color: '#6B7280', fontSize: '0.95rem', marginTop: '0.5rem' }}>
+                    {isAnonymous ? 'Anonymous Supporter' : donorName || 'Anonymous Supporter'}
                   </p>
-                  <p style={{ color: '#999', fontSize: '0.85rem', marginTop: '1rem' }}>
+                  <p style={{ color: '#6B7280', fontSize: '0.85rem', marginTop: '0.5rem' }}>
                     Payment Method: {paymentMethod.toUpperCase()}
                   </p>
                 </div>
