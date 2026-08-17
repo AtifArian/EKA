@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getClinics, getSpecializations } from '../services/api';
-import ClinicTile from '../components/ClinicTile';
 import Chatbot from '../components/Chatbot';
 
 function Clinics() {

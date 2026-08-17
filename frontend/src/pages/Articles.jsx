@@ -18,6 +18,7 @@ function Articles({ user }) {
 
   useEffect(() => {
     fetchArticles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.search, filters.sort]);
 
   useEffect(() => {

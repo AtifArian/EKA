@@ -43,6 +43,7 @@ function VideoCall({ user, setUser }) {
       document.body.removeChild(script);
       window.removeEventListener('resize', measureNav);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate]);
 
   const initializeJitsi = () => {

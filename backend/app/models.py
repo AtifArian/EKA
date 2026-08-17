@@ -5,6 +5,15 @@ from flask_bcrypt import Bcrypt
 db = SQLAlchemy()
 bcrypt = Bcrypt()
 
+def format_datetime(dt):
+    if dt is None:
+        return None
+    if isinstance(dt, str):
+        return dt
+    if hasattr(dt, 'isoformat'):
+        return dt.isoformat()
+    return str(dt)
+
 # Association tables
 friendships = db.Table('friendships',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
@@ -67,7 +76,7 @@ class User(db.Model):
             'full_name': self.full_name,
             'profile_picture': profile_picture_url,
             'is_doctor': self.is_doctor,
-            'created_at': self.created_at.isoformat()
+            'created_at': format_datetime(self.created_at)
         }
 
 class FriendRequest(db.Model):
@@ -89,7 +98,7 @@ class FriendRequest(db.Model):
             'from_user': self.from_user.to_dict() if self.from_user else None,
             'to_user': self.to_user.to_dict() if self.to_user else None,
             'status': self.status,
-            'created_at': self.created_at.isoformat()
+            'created_at': format_datetime(self.created_at)
         }
 
 class Doctor(db.Model):
@@ -136,7 +145,7 @@ class Doctor(db.Model):
             'is_verified': self.is_verified,
             'average_rating': self.average_rating,
             'review_count': len(self.reviews) if hasattr(self, 'reviews') else 0,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'created_at': format_datetime(self.created_at)
         }
     
     @property
@@ -165,9 +174,9 @@ class MoodEntry(db.Model):
             'energy_level': self.energy_level,
             'stress_level': self.stress_level,
             'social_connection': self.social_connection,
-            'date': self.date.isoformat() if self.date else None,
+            'date': format_datetime(self.date),
             'notes': self.notes,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'created_at': format_datetime(self.created_at)
         }
 
 class Article(db.Model):
@@ -197,7 +206,7 @@ class Article(db.Model):
             'keywords': self.keywords,
             'like_count': self.like_count(),
             'comment_count': len(self.comments),
-            'created_at': self.created_at.isoformat()
+            'created_at': format_datetime(self.created_at)
         }
         if include_content:
             data['content'] = self.content
@@ -224,7 +233,7 @@ class ArticleComment(db.Model):
             'id': self.id,
             'user': self.user.to_dict(),
             'content': self.content,
-            'created_at': self.created_at.isoformat()
+            'created_at': format_datetime(self.created_at)
         }
 
 class ArticleRead(db.Model):
@@ -242,7 +251,7 @@ class ArticleRead(db.Model):
             'user_id': self.user_id,
             'article_id': self.article_id,
             'article_title': self.article.title if self.article else None,
-            'created_at': self.created_at.isoformat()
+            'created_at': format_datetime(self.created_at)
         }
 
 class Journal(db.Model):
@@ -272,7 +281,7 @@ class Journal(db.Model):
             'is_public': self.is_public,
             'heart_count': self.heart_count(),
             'comment_count': len(self.comments),
-            'created_at': self.created_at.isoformat()
+            'created_at': format_datetime(self.created_at)
         }
         if include_sentiment:
             data['sentiment_score'] = self.sentiment_score
@@ -299,7 +308,7 @@ class JournalComment(db.Model):
             'id': self.id,
             'user': self.user.to_dict(),
             'content': self.content,
-            'created_at': self.created_at.isoformat()
+            'created_at': format_datetime(self.created_at)
         }
 
 class ClinicReview(db.Model):
@@ -319,7 +328,7 @@ class ClinicReview(db.Model):
             'user': self.user.to_dict(),
             'rating': self.rating,
             'comment': self.comment,
-            'created_at': self.created_at.isoformat()
+            'created_at': format_datetime(self.created_at)
         }
 
 class Booking(db.Model):
@@ -339,10 +348,10 @@ class Booking(db.Model):
             'id': self.id,
             'user': self.user.to_dict(),
             'doctor': self.doctor.to_dict(),
-            'appointment_date': self.appointment_date.isoformat(),
+            'appointment_date': format_datetime(self.appointment_date),
             'status': self.status,
             'notes': self.notes,
-            'created_at': self.created_at.isoformat()
+            'created_at': format_datetime(self.created_at)
         }
 
 class ChatRequest(db.Model):
@@ -363,7 +372,7 @@ class ChatRequest(db.Model):
             'to_doctor': self.to_doctor.to_dict(),
             'message': self.message,
             'status': self.status,
-            'created_at': self.created_at.isoformat()
+            'created_at': format_datetime(self.created_at)
         }
 
 
@@ -389,7 +398,7 @@ class ChatThread(db.Model):
             'user_id': self.user_id,
             'other_user_id': self.other_user_id,
             'doctor_id': self.doctor_id,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_at': format_datetime(self.created_at),
             'participants': self.get_participants()
         }
 
@@ -421,9 +430,9 @@ class Message(db.Model):
             'sender_id': self.sender_id,
             'sender': self.sender.to_dict() if self.sender else None,
             'content': self.content,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_at': format_datetime(self.created_at),
             'is_read': self.is_read,
-            'read_at': self.read_at.isoformat() if self.read_at else None
+            'read_at': format_datetime(self.read_at)
         }
 
 class Notification(db.Model):
@@ -443,7 +452,7 @@ class Notification(db.Model):
             'ref_type': self.ref_type,
             'ref_id': self.ref_id,
             'is_read': self.is_read,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'created_at': format_datetime(self.created_at)
         }
 
 class Donation(db.Model):
@@ -475,5 +484,5 @@ class Donation(db.Model):
             'message': self.message,
             'is_anonymous': self.is_anonymous,
             'status': self.status,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'created_at': format_datetime(self.created_at)
         }
