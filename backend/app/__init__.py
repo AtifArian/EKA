@@ -41,6 +41,11 @@ def create_app(config_class=Config):
             abs_db_path = os.path.abspath(os.path.join(backend_dir, db_file))
             app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{abs_db_path}'
     
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_pre_ping': True,
+        'pool_recycle': 300
+    }
+    
     # Initialize extensions
     db.init_app(app)
     bcrypt.init_app(app)
