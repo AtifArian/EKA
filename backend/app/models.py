@@ -63,11 +63,14 @@ class User(db.Model):
         # Convert profile_picture path to URL
         profile_picture_url = None
         if self.profile_picture:
-            # Remove 'uploads/' prefix if present and construct URL
-            path = self.profile_picture.replace('\\', '/')
-            if path.startswith('uploads/'):
-                path = path[8:]  # Remove 'uploads/' prefix
-            profile_picture_url = f'/uploads/{path}'
+            pic = self.profile_picture
+            if pic.startswith('http://') or pic.startswith('https://') or pic.startswith('data:'):
+                profile_picture_url = pic
+            else:
+                path = pic.replace('\\', '/')
+                if path.startswith('uploads/'):
+                    path = path[8:]  # Remove 'uploads/' prefix
+                profile_picture_url = f'/uploads/{path}' if not path.startswith('/') else path
         
         return {
             'id': self.id,
@@ -198,11 +201,18 @@ class Article(db.Model):
         return len(self.likes)
     
     def to_dict(self, include_content=False):
+        cover_url = self.cover_image
+        if cover_url and not (cover_url.startswith('http://') or cover_url.startswith('https://') or cover_url.startswith('data:')):
+            path = cover_url.replace('\\', '/')
+            if path.startswith('uploads/'):
+                path = path[8:]
+            cover_url = f'/uploads/{path}' if not path.startswith('/') else path
+
         data = {
             'id': self.id,
-            'author': self.author.user.to_dict(),
+            'author': self.author.user.to_dict() if self.author and self.author.user else None,
             'title': self.title,
-            'cover_image': self.cover_image,
+            'cover_image': cover_url,
             'keywords': self.keywords,
             'like_count': self.like_count(),
             'comment_count': len(self.comments),

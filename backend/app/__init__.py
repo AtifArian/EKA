@@ -164,16 +164,50 @@ def create_app(config_class=Config):
                         conn.execute(text("ALTER TABLE journal ADD COLUMN emotion VARCHAR(20)"))
                         conn.commit()
             elif 'postgresql' in db_uri:
-                # PostgreSQL migration for emotion column
+                # PostgreSQL comprehensive column size migrations
                 with engine.connect() as conn:
-                    # Check if column exists
-                    result = conn.execute(text(
-                        "SELECT column_name FROM information_schema.columns "
-                        "WHERE table_name='journal' AND column_name='emotion'"
-                    ))
-                    if not result.fetchone():
-                        conn.execute(text("ALTER TABLE journal ADD COLUMN emotion VARCHAR(20)"))
-                        conn.commit()
+                    # Fix truncated columns across all tables
+                    migrations = [
+                        'ALTER TABLE "user" ALTER COLUMN password_hash TYPE VARCHAR(255)',
+                        'ALTER TABLE "user" ALTER COLUMN username TYPE VARCHAR(120)',
+                        'ALTER TABLE "user" ALTER COLUMN email TYPE VARCHAR(255)',
+                        'ALTER TABLE "user" ALTER COLUMN full_name TYPE VARCHAR(255)',
+                        'ALTER TABLE "user" ALTER COLUMN profile_picture TYPE VARCHAR(500)',
+                        'ALTER TABLE "user" ALTER COLUMN google_id TYPE VARCHAR(255)',
+                        'ALTER TABLE doctor ALTER COLUMN specialization TYPE VARCHAR(255)',
+                        'ALTER TABLE doctor ALTER COLUMN location TYPE VARCHAR(500)',
+                        'ALTER TABLE doctor ALTER COLUMN google_maps_link TYPE VARCHAR(500)',
+                        'ALTER TABLE doctor ALTER COLUMN verification_document TYPE VARCHAR(500)',
+                        'ALTER TABLE doctor ALTER COLUMN quote TYPE VARCHAR(500)',
+                        'ALTER TABLE doctor ALTER COLUMN age_group TYPE VARCHAR(100)',
+                        'ALTER TABLE article ALTER COLUMN title TYPE VARCHAR(255)',
+                        'ALTER TABLE article ALTER COLUMN cover_image TYPE VARCHAR(500)',
+                        'ALTER TABLE article ALTER COLUMN mood_category TYPE VARCHAR(100)',
+                        'ALTER TABLE article ALTER COLUMN keywords TYPE VARCHAR(500)',
+                        'ALTER TABLE journal ALTER COLUMN title TYPE VARCHAR(255)',
+                        'ALTER TABLE donation ALTER COLUMN donor_name TYPE VARCHAR(255)',
+                        'ALTER TABLE donation ALTER COLUMN donor_email TYPE VARCHAR(255)',
+                        'ALTER TABLE donation ALTER COLUMN transaction_id TYPE VARCHAR(255)',
+                        'ALTER TABLE donation ALTER COLUMN payment_method TYPE VARCHAR(100)'
+                    ]
+                    for sql in migrations:
+                        try:
+                            conn.execute(text(sql))
+                            conn.commit()
+                        except Exception:
+                            pass
+                    
+                    # Ensure emotion column exists on journal
+                    try:
+                        result = conn.execute(text(
+                            "SELECT column_name FROM information_schema.columns "
+                            "WHERE table_name='journal' AND column_name='emotion'"
+                        ))
+                        if not result.fetchone():
+                            conn.execute(text("ALTER TABLE journal ADD COLUMN emotion VARCHAR(50)"))
+                            conn.commit()
+                    except Exception:
+                        pass
         except Exception as e:
             # Non-fatal; if migration fails, manual migration may be required
             print(f"Warning: Migration failed: {e}")

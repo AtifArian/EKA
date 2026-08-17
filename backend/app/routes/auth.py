@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from app.models import db, User, Doctor
+from app.utils.storage import upload_file_to_storage, delete_file_from_storage
 from google.oauth2 import id_token
 from google.auth.transport import requests
 import os
@@ -45,8 +46,27 @@ def signup():
         )
         user.set_password(password)
         
-        db.session.add(user)
-        db.session.commit()
+        try:
+            db.session.add(user)
+            db.session.commit()
+        except Exception as commit_err:
+            db.session.rollback()
+            err_str = str(commit_err).lower()
+            if 'truncat' in err_str or 'too long' in err_str or 'stringdata' in err_str:
+                from sqlalchemy import text
+                engine = db.get_engine()
+                with engine.connect() as conn:
+                    conn.execute(text('ALTER TABLE "user" ALTER COLUMN password_hash TYPE VARCHAR(255)'))
+                    conn.execute(text('ALTER TABLE "user" ALTER COLUMN username TYPE VARCHAR(120)'))
+                    conn.execute(text('ALTER TABLE "user" ALTER COLUMN email TYPE VARCHAR(255)'))
+                    conn.execute(text('ALTER TABLE "user" ALTER COLUMN full_name TYPE VARCHAR(255)'))
+                    conn.execute(text('ALTER TABLE "user" ALTER COLUMN profile_picture TYPE VARCHAR(500)'))
+                    conn.execute(text('ALTER TABLE "user" ALTER COLUMN google_id TYPE VARCHAR(255)'))
+                    conn.commit()
+                db.session.add(user)
+                db.session.commit()
+            else:
+                raise commit_err
         
         if user.is_doctor:
             doctor = Doctor(
@@ -261,19 +281,25 @@ def verify_doctor():
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
         
-        filename = f"verification_{user.id}_{file.filename}"
-        filepath = os.path.join('uploads', 'verifications', filename)
-        file.save(filepath)
-        
         doctor = Doctor.query.filter_by(user_id=user.id).first()
-        if doctor:
-            doctor.verification_document = filepath
-            doctor.is_verified = True
-            db.session.commit()
+        if not doctor:
+            doctor = Doctor(user_id=user.id)
+            db.session.add(doctor)
+            
+        if doctor.verification_document:
+            delete_file_from_storage(doctor.verification_document)
+            
+        doc_url = upload_file_to_storage(file, folder='verifications', prefix=f"doc_{user.id}")
+        if not doc_url:
+            return jsonify({'error': 'Failed to save verification document'}), 500
+            
+        doctor.verification_document = doc_url
+        doctor.is_verified = True
+        db.session.commit()
         
         return jsonify({
             'message': 'Verification document uploaded successfully',
-            'doctor': doctor.to_dict() if doctor else None
+            'doctor': doctor.to_dict()
         }), 200
     except Exception as e:
         db.session.rollback()

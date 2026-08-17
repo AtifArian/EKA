@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import db, User, FriendRequest, Notification
 from sqlalchemy import or_
+from app.utils.storage import upload_file_to_storage, delete_file_from_storage
 import os
 
 users_bp = Blueprint('users', __name__)
@@ -178,55 +179,51 @@ def remove_friend(friend_id):
 @users_bp.route('/profile', methods=['PUT'])
 @jwt_required()
 def update_profile():
-    current_user_id = int(get_jwt_identity())
-    user = User.query.get(current_user_id)
-    
-    # Handle both JSON and form data
-    data = request.get_json(silent=True) or {}
-    
-    if 'full_name' in data:
-        user.full_name = data['full_name']
-    
-    # Handle file upload
-    if 'profile_picture' in request.files:
-        file = request.files['profile_picture']
-        if file.filename:
-            # Delete old profile picture if exists
-            if user.profile_picture and os.path.exists(user.profile_picture):
-                try:
-                    os.remove(user.profile_picture)
-                except:
-                    pass
-            
-            filename = f"profile_{user.id}_{file.filename}"
-            filepath = os.path.join('uploads', 'profiles', filename)
-            
-            # Ensure directory exists
-            os.makedirs(os.path.dirname(filepath), exist_ok=True)
-            
-            file.save(filepath)
-            user.profile_picture = filepath
-    
-    db.session.commit()
-    return jsonify(user.to_dict()), 200
+    try:
+        current_user_id = int(get_jwt_identity())
+        user = User.query.get(current_user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Handle both JSON and form data
+        data = request.get_json(silent=True) or {}
+        full_name = data.get('full_name') or request.form.get('full_name')
+        
+        if full_name is not None:
+            user.full_name = full_name.strip()
+        
+        # Handle profile picture file upload
+        if 'profile_picture' in request.files:
+            file = request.files['profile_picture']
+            if file and file.filename:
+                # Delete old profile picture if exists
+                if user.profile_picture:
+                    delete_file_from_storage(user.profile_picture)
+                
+                new_pic_url = upload_file_to_storage(file, folder='profiles', prefix=f"user_{user.id}")
+                if new_pic_url:
+                    user.profile_picture = new_pic_url
+        
+        db.session.commit()
+        return jsonify(user.to_dict()), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to update profile: {str(e)}'}), 500
 
 @users_bp.route('/profile-picture', methods=['DELETE'])
 @jwt_required()
 def delete_profile_picture():
-    current_user_id = int(get_jwt_identity())
-    user = User.query.get(current_user_id)
-    
-    if user.profile_picture:
-        # Delete the file from filesystem
-        if os.path.exists(user.profile_picture):
-            try:
-                os.remove(user.profile_picture)
-            except Exception as e:
-                print(f"Error deleting file: {e}")
+    try:
+        current_user_id = int(get_jwt_identity())
+        user = User.query.get(current_user_id)
         
-        # Remove from database
-        user.profile_picture = None
-        db.session.commit()
-        return jsonify({'message': 'Profile picture deleted successfully'}), 200
-    
-    return jsonify({'error': 'No profile picture to delete'}), 404
+        if user and user.profile_picture:
+            delete_file_from_storage(user.profile_picture)
+            user.profile_picture = None
+            db.session.commit()
+            return jsonify({'message': 'Profile picture deleted successfully'}), 200
+        
+        return jsonify({'error': 'No profile picture to delete'}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to delete profile picture: {str(e)}'}), 500

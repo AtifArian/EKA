@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import db, Article, ArticleLike, ArticleComment, Doctor
 from app.utils.decorators import doctor_required
+from app.utils.storage import upload_file_to_storage, delete_file_from_storage
 import os
 
 articles_bp = Blueprint('articles', __name__)
@@ -129,14 +130,10 @@ def create_article():
     )
     
     # Save cover image
-    from werkzeug.utils import secure_filename
-    import time
-    filename = f"article_{doctor.id}_{int(time.time())}_{secure_filename(file.filename)}"
-    upload_dir = os.path.join('uploads', 'articles')
-    os.makedirs(upload_dir, exist_ok=True)
-    filepath = os.path.join(upload_dir, filename)
-    file.save(filepath)
-    article.cover_image = f"/uploads/articles/{filename}"
+    cover_url = upload_file_to_storage(file, folder='articles', prefix=f"doc_{doctor.id}")
+    if not cover_url:
+        return jsonify({'error': 'Failed to save cover image'}), 500
+    article.cover_image = cover_url
     
     db.session.add(article)
     db.session.commit()
@@ -162,8 +159,6 @@ def update_article(article_id):
         return jsonify({'error': 'Not authorized to edit this article'}), 403
     
     data = request.get_json(silent=True) or {}
-    
-    # Get form data if no JSON
     title = data.get('title') or request.form.get('title')
     content = data.get('content') or request.form.get('content')
     mood_category = data.get('mood_category') or request.form.get('mood_category')
@@ -173,29 +168,20 @@ def update_article(article_id):
         article.title = title
     if content:
         article.content = content
-    if mood_category is not None:
+    if mood_category:
         article.mood_category = mood_category
-    if keywords is not None:
+    if keywords:
         article.keywords = keywords
     
-    # Handle cover image update
+    # Check if new cover image provided
     if 'cover_image' in request.files:
         file = request.files['cover_image']
         if file.filename != '':
-            # Validate file type
-            allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-            file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
-            if file_ext not in allowed_extensions:
-                return jsonify({'error': 'Invalid image format'}), 400
-            
-            from werkzeug.utils import secure_filename
-            import time
-            filename = f"article_{doctor.id}_{int(time.time())}_{secure_filename(file.filename)}"
-            upload_dir = os.path.join('uploads', 'articles')
-            os.makedirs(upload_dir, exist_ok=True)
-            filepath = os.path.join(upload_dir, filename)
-            file.save(filepath)
-            article.cover_image = f"/uploads/articles/{filename}"
+            if article.cover_image:
+                delete_file_from_storage(article.cover_image)
+            new_cover = upload_file_to_storage(file, folder='articles', prefix=f"doc_{doctor.id}")
+            if new_cover:
+                article.cover_image = new_cover
     
     db.session.commit()
     
@@ -219,6 +205,9 @@ def delete_article(article_id):
     if article.doctor_id != doctor.id:
         return jsonify({'error': 'Not authorized to delete this article'}), 403
     
+    if article.cover_image:
+        delete_file_from_storage(article.cover_image)
+        
     db.session.delete(article)
     db.session.commit()
     
