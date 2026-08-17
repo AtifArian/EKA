@@ -169,37 +169,6 @@ def create_app(config_class=Config):
                     db.session.rollback()
                     print(f"SQLite migration note: {sq_err}")
             elif 'postgresql' in db_uri:
-                # PostgreSQL comprehensive column size migrations (use TEXT to eliminate all truncation issues)
-                migrations = [
-                    'ALTER TABLE "user" ALTER COLUMN password_hash TYPE TEXT;',
-                    'ALTER TABLE "user" ALTER COLUMN username TYPE TEXT;',
-                    'ALTER TABLE "user" ALTER COLUMN email TYPE TEXT;',
-                    'ALTER TABLE "user" ALTER COLUMN full_name TYPE TEXT;',
-                    'ALTER TABLE "user" ALTER COLUMN profile_picture TYPE TEXT;',
-                    'ALTER TABLE "user" ALTER COLUMN google_id TYPE TEXT;',
-                    'ALTER TABLE doctor ALTER COLUMN specialization TYPE TEXT;',
-                    'ALTER TABLE doctor ALTER COLUMN location TYPE TEXT;',
-                    'ALTER TABLE doctor ALTER COLUMN google_maps_link TYPE TEXT;',
-                    'ALTER TABLE doctor ALTER COLUMN verification_document TYPE TEXT;',
-                    'ALTER TABLE doctor ALTER COLUMN quote TYPE TEXT;',
-                    'ALTER TABLE doctor ALTER COLUMN age_group TYPE TEXT;',
-                    'ALTER TABLE article ALTER COLUMN title TYPE TEXT;',
-                    'ALTER TABLE article ALTER COLUMN cover_image TYPE TEXT;',
-                    'ALTER TABLE article ALTER COLUMN mood_category TYPE TEXT;',
-                    'ALTER TABLE article ALTER COLUMN keywords TYPE TEXT;',
-                    'ALTER TABLE journal ALTER COLUMN title TYPE TEXT;',
-                    'ALTER TABLE donation ALTER COLUMN donor_name TYPE TEXT;',
-                    'ALTER TABLE donation ALTER COLUMN donor_email TYPE TEXT;',
-                    'ALTER TABLE donation ALTER COLUMN transaction_id TYPE TEXT;',
-                    'ALTER TABLE donation ALTER COLUMN payment_method TYPE TEXT;'
-                ]
-                for sql in migrations:
-                    try:
-                        db.session.execute(text(sql))
-                        db.session.commit()
-                    except Exception:
-                        db.session.rollback()
-                
                 # Ensure emotion column exists on journal
                 try:
                     res = db.session.execute(text(
@@ -207,7 +176,7 @@ def create_app(config_class=Config):
                         "WHERE table_name='journal' AND column_name='emotion'"
                     ))
                     if not res.fetchone():
-                        db.session.execute(text("ALTER TABLE journal ADD COLUMN emotion VARCHAR(50);"))
+                        db.session.execute(text("ALTER TABLE journal ADD COLUMN emotion TEXT;"))
                         db.session.commit()
                 except Exception:
                     db.session.rollback()

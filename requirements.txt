@@ -9,3 +9,4 @@ numpy
 google-auth
 google-generativeai
 psycopg2-binary
+requests
