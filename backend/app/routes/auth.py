@@ -35,9 +35,19 @@ def signup():
         if User.query.filter(db.func.lower(User.email) == email).first():
             return jsonify({'error': 'Email already registered'}), 400
         
-        if User.query.filter(db.func.lower(User.username) == username.lower()).first():
-            return jsonify({'error': 'Username already taken'}), 400
-        
+        # Ensure PostgreSQL user table columns are TEXT before inserting
+        try:
+            from sqlalchemy import text
+            db.session.execute(text('ALTER TABLE "user" ALTER COLUMN password_hash TYPE TEXT;'))
+            db.session.execute(text('ALTER TABLE "user" ALTER COLUMN username TYPE TEXT;'))
+            db.session.execute(text('ALTER TABLE "user" ALTER COLUMN email TYPE TEXT;'))
+            db.session.execute(text('ALTER TABLE "user" ALTER COLUMN full_name TYPE TEXT;'))
+            db.session.execute(text('ALTER TABLE "user" ALTER COLUMN profile_picture TYPE TEXT;'))
+            db.session.execute(text('ALTER TABLE "user" ALTER COLUMN google_id TYPE TEXT;'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
         user = User(
             username=username,
             email=email,
@@ -54,15 +64,13 @@ def signup():
             err_str = str(commit_err).lower()
             if 'truncat' in err_str or 'too long' in err_str or 'stringdata' in err_str:
                 from sqlalchemy import text
-                engine = db.get_engine()
-                with engine.connect() as conn:
-                    conn.execute(text('ALTER TABLE "user" ALTER COLUMN password_hash TYPE VARCHAR(255)'))
-                    conn.execute(text('ALTER TABLE "user" ALTER COLUMN username TYPE VARCHAR(120)'))
-                    conn.execute(text('ALTER TABLE "user" ALTER COLUMN email TYPE VARCHAR(255)'))
-                    conn.execute(text('ALTER TABLE "user" ALTER COLUMN full_name TYPE VARCHAR(255)'))
-                    conn.execute(text('ALTER TABLE "user" ALTER COLUMN profile_picture TYPE VARCHAR(500)'))
-                    conn.execute(text('ALTER TABLE "user" ALTER COLUMN google_id TYPE VARCHAR(255)'))
-                    conn.commit()
+                db.session.execute(text('ALTER TABLE "user" ALTER COLUMN password_hash TYPE TEXT;'))
+                db.session.execute(text('ALTER TABLE "user" ALTER COLUMN username TYPE TEXT;'))
+                db.session.execute(text('ALTER TABLE "user" ALTER COLUMN email TYPE TEXT;'))
+                db.session.execute(text('ALTER TABLE "user" ALTER COLUMN full_name TYPE TEXT;'))
+                db.session.execute(text('ALTER TABLE "user" ALTER COLUMN profile_picture TYPE TEXT;'))
+                db.session.execute(text('ALTER TABLE "user" ALTER COLUMN google_id TYPE TEXT;'))
+                db.session.commit()
                 db.session.add(user)
                 db.session.commit()
             else:
