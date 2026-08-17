@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listThreads, createUserUserThread, postThreadMessage } from '../services/api';
 import { getHighRiskPatients } from '../services/api';
+import { getResolvedImageUrl, handleImageError } from '../utils/imageHelper';
 
 function HighRiskAlert({ user, onChatNow }) {
   const navigate = useNavigate();
@@ -87,9 +88,6 @@ function HighRiskAlert({ user, onChatNow }) {
   if (!showAlert || highRiskPatients.length === 0) return null;
 
   const patient = highRiskPatients[currentPatientIndex];
-  const API_BASE = process.env.REACT_APP_API_URL 
-    ? process.env.REACT_APP_API_URL.replace('/api', '') 
-    : 'http://127.0.0.1:5050';
 
   return (
     <div style={{
@@ -172,8 +170,9 @@ function HighRiskAlert({ user, onChatNow }) {
           }}>
             {patient.profile_picture ? (
               <img 
-                src={`${API_BASE}${patient.profile_picture}`}
+                src={getResolvedImageUrl(patient.profile_picture, 'user')}
                 alt={patient.username}
+                onError={(e) => handleImageError(e, 'user')}
                 style={{
                   width: '100%',
                   height: '100%',

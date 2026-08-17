@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getClinicDetail, bookSession, addClinicReview, createDoctorChatRequest, getMyBookings } from '../services/api';
+import { getResolvedImageUrl, handleImageError } from '../utils/imageHelper';
 
 function ClinicDetail({ user }) {
   const { id } = useParams();
@@ -134,16 +135,7 @@ function ClinicDetail({ user }) {
     return <div className="loading">Loading...</div>;
   }
 
-  // Construct full URL for profile picture (normalize leading slash)
-  const API_BASE = process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050';
-  const profilePath = clinic.user.profile_picture
-    ? (clinic.user.profile_picture.startsWith('/')
-        ? clinic.user.profile_picture
-        : `/${clinic.user.profile_picture}`)
-    : null;
-  const profilePictureUrl = profilePath
-    ? `${API_BASE}${profilePath}`
-    : 'https://via.placeholder.com/500x500?text=Doctor';
+  const profilePictureUrl = getResolvedImageUrl(clinic.user.profile_picture, 'doctor');
 
   return (
     <div className="container">
@@ -151,7 +143,8 @@ function ClinicDetail({ user }) {
         <div className="hero-image">
           <img 
             src={profilePictureUrl}
-            alt={clinic.user.full_name}
+            alt={clinic.user.full_name || 'Doctor'}
+            onError={(e) => handleImageError(e, 'doctor')}
           />
         </div>
         <div className="hero-content">

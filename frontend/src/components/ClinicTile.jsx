@@ -1,19 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-
-const DEFAULT_DOCTOR_AVATAR = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%237B85C4"/><stop offset="100%" stop-color="%239BA5D4"/></linearGradient></defs><rect width="200" height="200" fill="url(%23g)"/><text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="54" fill="white">🩺</text></svg>`;
+import { getResolvedImageUrl, handleImageError } from '../utils/imageHelper';
 
 function ClinicTile({ clinic }) {
   const navigate = useNavigate();
   
-  const API_BASE = process.env.REACT_APP_API_URL 
-    ? process.env.REACT_APP_API_URL.replace('/api', '') 
-    : 'http://127.0.0.1:5050';
-
-  const profilePictureUrl = clinic.user?.profile_picture 
-    ? `${API_BASE}${clinic.user.profile_picture}`
-    : DEFAULT_DOCTOR_AVATAR;
-
+  const profilePictureUrl = getResolvedImageUrl(clinic.user?.profile_picture, 'doctor');
   const doctorName = clinic.user?.full_name || clinic.user?.username || 'Verified Doctor';
 
   return (
@@ -38,15 +30,12 @@ function ClinicTile({ clinic }) {
         width="200"
         height="200"
         decoding="async"
-        onError={(e) => {
-          e.currentTarget.onerror = null;
-          e.currentTarget.src = DEFAULT_DOCTOR_AVATAR;
-        }}
+        onError={(e) => handleImageError(e, 'doctor')}
       />
       <div className="tile-content">
         <h3>{doctorName}</h3>
         {clinic.specialization && (
-          <p style={{ color: '#7B85C4', fontWeight: '600' }}>{clinic.specialization}</p>
+          <p style={{ color: '#4338CA', fontWeight: '600' }}>{clinic.specialization}</p>
         )}
         {clinic.bio && <p>{clinic.bio}</p>}
         <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#4B5563' }}>

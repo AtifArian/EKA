@@ -5,7 +5,6 @@ let API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5050/api';
 if (API_URL) {
   const hasApiSegment = /\/api\/?$/.test(API_URL) || /\/api\//.test(API_URL);
   if (!hasApiSegment) {
-    // Append '/api' safely without duplicating slashes
     API_URL = API_URL.replace(/\/$/, '') + '/api';
   }
 }
@@ -16,6 +15,39 @@ const api = axios.create({
     'Content-Type': 'application/json'
   }
 });
+
+// Simple in-memory response cache with TTL for ultra-fast navigation (0ms instant page loads)
+const apiCache = new Map();
+const DEFAULT_CACHE_TTL = 180000; // 3 minutes
+
+const getCacheKey = (url, params = {}) => {
+  const queryString = new URLSearchParams(params).toString();
+  return `${url}?${queryString}`;
+};
+
+export const getCachedData = (url, params = {}) => {
+  const key = getCacheKey(url, params);
+  const entry = apiCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > entry.ttl) {
+    apiCache.delete(key);
+    return null;
+  }
+  return entry.data;
+};
+
+export const setCachedData = (url, params = {}, data, ttl = DEFAULT_CACHE_TTL) => {
+  const key = getCacheKey(url, params);
+  apiCache.set(key, { data, timestamp: Date.now(), ttl });
+};
+
+export const clearCachePrefix = (prefix) => {
+  for (const key of apiCache.keys()) {
+    if (key.startsWith(prefix)) {
+      apiCache.delete(key);
+    }
+  }
+};
 
 api.interceptors.request.use(
   (config) => {
@@ -37,14 +69,11 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Token expired or invalid
       const errorMsg = error.response.data?.msg || error.response.data?.error || '';
       if (errorMsg.includes('expired') || errorMsg.includes('Token') || errorMsg.includes('JWT')) {
-        // Clear invalid token
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         
-        // Redirect to login page
         if (window.location.pathname !== '/login') {
           alert('Your session has expired. Please login again.');
           window.location.href = '/login';
@@ -54,6 +83,21 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Cached fetch helper
+const fetchWithCache = async (url, params = {}, ttl = DEFAULT_CACHE_TTL) => {
+  const cached = getCachedData(url, params);
+  if (cached) {
+    // Return cached immediately; fetch fresh in background
+    api.get(url, { params })
+      .then(res => setCachedData(url, params, res.data, ttl))
+      .catch(() => {});
+    return cached;
+  }
+  const res = await api.get(url, { params });
+  setCachedData(url, params, res.data, ttl);
+  return res.data;
+};
 
 export const checkTodayMood = () => api.get('/mood/today').then(res => res.data);
 export const createMoodEntry = (data) => api.post('/mood', data).then(res => res.data);
@@ -66,29 +110,41 @@ export const addFriend = (friendId) => api.post(`/users/friends/${friendId}`).th
 export const removeFriend = (friendId) => api.delete(`/users/friends/${friendId}`).then(res => res.data);
 export const getFriendRequests = () => api.get('/users/friend-requests').then(res => res.data);
 export const handleFriendRequest = (requestId, action) => api.put(`/users/friend-requests/${requestId}`, { action }).then(res => res.data);
-export const updateProfile = (data) => api.put('/users/profile', data).then(res => res.data);
+export const updateProfile = (data) => api.put('/users/profile', data).then(res => {
+  clearCachePrefix('/users');
+  return res.data;
+});
 export const uploadProfilePicture = (file) => {
   const formData = new FormData();
   formData.append('profile_picture', file);
   return api.put('/users/profile', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
-  }).then(res => res.data);
+  }).then(res => {
+    clearCachePrefix('/users');
+    return res.data;
+  });
 };
-export const deleteProfilePicture = () => api.delete('/users/profile-picture').then(res => res.data);
+export const deleteProfilePicture = () => api.delete('/users/profile-picture').then(res => {
+  clearCachePrefix('/users');
+  return res.data;
+});
 
-export const getClinics = (params) => {
-  const query = new URLSearchParams(params).toString();
-  // Use trailing slash to match Flask blueprint root route and avoid 308 redirects
-  return api.get(`/clinics/?${query}`).then(res => res.data);
-};
-export const getClinicDetail = (clinicId) => api.get(`/clinics/${clinicId}`).then(res => res.data);
-export const addClinicReview = (clinicId, data) => api.post(`/clinics/${clinicId}/reviews`, data).then(res => res.data);
+// Clinic APIs with caching
+export const getClinics = (params = {}) => fetchWithCache('/clinics/', params);
+export const getClinicDetail = (clinicId) => fetchWithCache(`/clinics/${clinicId}`);
+export const addClinicReview = (clinicId, data) => api.post(`/clinics/${clinicId}/reviews`, data).then(res => {
+  clearCachePrefix('/clinics');
+  return res.data;
+});
 export const bookSession = (clinicId, data) => api.post(`/clinics/${clinicId}/book`, data).then(res => res.data);
 export const sendChatRequest = (clinicId, data) => api.post(`/clinics/${clinicId}/chat-request`, data).then(res => res.data);
-export const getSpecializations = () => api.get('/clinics/specializations').then(res => res.data);
+export const getSpecializations = () => fetchWithCache('/clinics/specializations', {}, 600000); // 10 min cache
 
 export const getDoctorProfile = () => api.get('/doctors/profile').then(res => res.data);
-export const updateDoctorProfile = (data) => api.put('/doctors/profile', data).then(res => res.data);
+export const updateDoctorProfile = (data) => api.put('/doctors/profile', data).then(res => {
+  clearCachePrefix('/clinics');
+  return res.data;
+});
 export const getPatients = () => api.get('/doctors/patients').then(res => res.data);
 export const getPatientDetail = (patientId) => api.get(`/doctors/patients/${patientId}`).then(res => res.data);
 export const getChatRequests = () => api.get('/doctors/chat-requests').then(res => res.data);
@@ -107,40 +163,66 @@ export const createDoctorChatRequest = (to_doctor_id, message) => api.post('/doc
 export const getNotificationCounts = () => api.get('/notifications').then(res => res.data);
 export const markNotificationsRead = (scope) => api.put('/notifications/read', { scope }).then(res => res.data);
 
-export const getArticles = (params) => {
-  const query = new URLSearchParams(params).toString();
-  return api.get(`/articles?${query}`).then(res => res.data);
-};
-export const getTopArticles = () => api.get('/articles/top').then(res => res.data);
-export const getArticle = (articleId) => api.get(`/articles/${articleId}`).then(res => res.data);
+// Article APIs with caching
+export const getArticles = (params = {}) => fetchWithCache('/articles', params);
+export const getTopArticles = () => fetchWithCache('/articles/top');
+export const getArticle = (articleId) => fetchWithCache(`/articles/${articleId}`);
 export const getMyArticles = () => api.get('/articles/my').then(res => res.data);
 export const createArticle = (formData) => {
   return api.post('/articles', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
-  }).then(res => res.data);
+  }).then(res => {
+    clearCachePrefix('/articles');
+    return res.data;
+  });
 };
 export const updateArticle = (articleId, formData) => {
   return api.put(`/articles/${articleId}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
-  }).then(res => res.data);
+  }).then(res => {
+    clearCachePrefix('/articles');
+    return res.data;
+  });
 };
-export const deleteArticle = (articleId) => api.delete(`/articles/${articleId}`).then(res => res.data);
-export const likeArticle = (articleId) => api.post(`/articles/${articleId}/like`).then(res => res.data);
-export const addArticleComment = (articleId, data) => api.post(`/articles/${articleId}/comments`, data).then(res => res.data);
+export const deleteArticle = (articleId) => api.delete(`/articles/${articleId}`).then(res => {
+  clearCachePrefix('/articles');
+  return res.data;
+});
+export const likeArticle = (articleId) => api.post(`/articles/${articleId}/like`).then(res => {
+  clearCachePrefix('/articles');
+  return res.data;
+});
+export const addArticleComment = (articleId, data) => api.post(`/articles/${articleId}/comments`, data).then(res => {
+  clearCachePrefix('/articles');
+  return res.data;
+});
 
-export const getJournals = (params) => {
-  const query = new URLSearchParams(params).toString();
-  return api.get(`/journals?${query}`).then(res => res.data);
-};
-export const getTopJournals = () => api.get('/journals/top').then(res => res.data);
-export const getJournal = (journalId) => api.get(`/journals/${journalId}`).then(res => res.data);
+// Journal APIs with caching
+export const getJournals = (params = {}) => fetchWithCache('/journals', params);
+export const getTopJournals = () => fetchWithCache('/journals/top');
+export const getJournal = (journalId) => fetchWithCache(`/journals/${journalId}`);
 export const getMyJournals = () => api.get('/journals/my').then(res => res.data);
 export const getUserJournals = (userId) => api.get(`/journals/user/${userId}`).then(res => res.data);
-export const createJournal = (data) => api.post('/journals', data).then(res => res.data);
-export const updateJournal = (journalId, data) => api.put(`/journals/${journalId}`, data).then(res => res.data);
-export const deleteJournal = (journalId) => api.delete(`/journals/${journalId}`).then(res => res.data);
-export const heartJournal = (journalId) => api.post(`/journals/${journalId}/heart`).then(res => res.data);
-export const addJournalComment = (journalId, data) => api.post(`/journals/${journalId}/comments`, data).then(res => res.data);
+export const createJournal = (data) => api.post('/journals', data).then(res => {
+  clearCachePrefix('/journals');
+  return res.data;
+});
+export const updateJournal = (journalId, data) => api.put(`/journals/${journalId}`, data).then(res => {
+  clearCachePrefix('/journals');
+  return res.data;
+});
+export const deleteJournal = (journalId) => api.delete(`/journals/${journalId}`).then(res => {
+  clearCachePrefix('/journals');
+  return res.data;
+});
+export const heartJournal = (journalId) => api.post(`/journals/${journalId}/heart`).then(res => {
+  clearCachePrefix('/journals');
+  return res.data;
+});
+export const addJournalComment = (journalId, data) => api.post(`/journals/${journalId}/comments`, data).then(res => {
+  clearCachePrefix('/journals');
+  return res.data;
+});
 
 // Booking APIs
 export const getMyBookings = () => api.get('/bookings/my-bookings').then(res => res.data);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getJournal, heartJournal, addJournalComment, updateJournal, deleteJournal } from '../services/api';
+import { getResolvedImageUrl, handleImageError } from '../utils/imageHelper';
 
 function JournalDetail({ user }) {
   const { id } = useParams();
@@ -450,8 +451,9 @@ function JournalDetail({ user }) {
                     }}>
                       {c.user.profile_picture ? (
                         <img 
-                          src={`${process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050'}/${c.user.profile_picture}`}
+                          src={getResolvedImageUrl(c.user.profile_picture, 'user')}
                           alt={c.user.username}
+                          onError={(e) => handleImageError(e, 'user')}
                           style={{
                             width: '100%',
                             height: '100%',

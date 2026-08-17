@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getResolvedImageUrl, handleImageError } from '../utils/imageHelper';
 
 function JournalTile({ journal }) {
   const navigate = useNavigate();
@@ -33,7 +34,9 @@ function JournalTile({ journal }) {
           <div 
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/users/${journal.author?.id}`);
+              if (journal.author?.id) {
+                navigate(`/users/${journal.author.id}`);
+              }
             }}
             style={{ 
               cursor: 'pointer', 
@@ -53,11 +56,12 @@ function JournalTile({ journal }) {
             }}>
               {journal.author?.profile_picture ? (
                 <img 
-                  src={`${process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050'}/${journal.author.profile_picture}`}
+                  src={getResolvedImageUrl(journal.author.profile_picture, 'user')}
                   alt={journal.author?.username || 'User avatar'}
                   loading="lazy"
                   width="32"
                   height="32"
+                  onError={(e) => handleImageError(e, 'user')}
                   style={{
                     width: '100%',
                     height: '100%',
@@ -80,7 +84,7 @@ function JournalTile({ journal }) {
                 </div>
               )}
             </div>
-            <span style={{ color: '#7B85C4', fontWeight: '600', fontSize: '0.9rem' }}>
+            <span style={{ color: '#4338CA', fontWeight: '600', fontSize: '0.9rem' }}>
               {journal.author?.username || 'Anonymous'}
             </span>
           </div>

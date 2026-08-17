@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { getResolvedImageUrl } from '../utils/imageHelper';
 
 function VideoCall({ user, setUser }) {
   const { sessionId } = useParams();
@@ -49,11 +50,7 @@ function VideoCall({ user, setUser }) {
   const initializeJitsi = () => {
     if (window.JitsiMeetExternalAPI && jitsiContainerRef.current) {
       const roomName = `vpaas-magic-cookie-08357ca3ce254d1aa26dcc15ea3a9774/EKA-Session-${sessionId}`;
-      const API_BASE = process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050';
-      const profilePath = user?.profile_picture
-        ? (user.profile_picture.startsWith('/') ? user.profile_picture : `/${user.profile_picture}`)
-        : null;
-      const avatarURL = profilePath ? `${API_BASE}${profilePath}` : undefined;
+      const avatarURL = user?.profile_picture ? getResolvedImageUrl(user.profile_picture, 'user') : undefined;
       
       const options = {
         roomName: roomName,

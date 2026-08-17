@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { getUser, getUserJournals } from '../services/api';
+import { getResolvedImageUrl, handleImageError } from '../utils/imageHelper';
 
 function UserProfile() {
   const { id } = useParams();
@@ -48,8 +49,9 @@ function UserProfile() {
           }}>
             {user.profile_picture ? (
               <img 
-                src={`${process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050'}/${user.profile_picture}`}
+                src={getResolvedImageUrl(user.profile_picture, 'user')}
                 alt={user.username}
+                onError={(e) => handleImageError(e, 'user')}
                 style={{
                   width: '100%',
                   height: '100%',

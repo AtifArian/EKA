@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getArticle, likeArticle, addArticleComment, updateArticle, deleteArticle, trackArticleRead } from '../services/api';
+import { getResolvedImageUrl, handleImageError } from '../utils/imageHelper';
 
 function ArticleDetail({ user }) {
   const { id } = useParams();
@@ -364,8 +365,9 @@ function ArticleDetail({ user }) {
                 maxHeight: '500px'
               }}>
                 <img 
-                  src={`${process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050'}${article.cover_image}`}
+                  src={getResolvedImageUrl(article.cover_image, 'article')}
                   alt={article.title}
+                  onError={(e) => handleImageError(e, 'article')}
                   style={{
                     width: '100%',
                     height: 'auto',
@@ -542,8 +544,9 @@ function ArticleDetail({ user }) {
                       }}>
                         {c.user.profile_picture ? (
                           <img 
-                            src={`${process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050'}/${c.user.profile_picture}`}
+                            src={getResolvedImageUrl(c.user.profile_picture, 'user')}
                             alt={c.user.username}
+                            onError={(e) => handleImageError(e, 'user')}
                             style={{
                               width: '100%',
                               height: '100%',

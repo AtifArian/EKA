@@ -40,6 +40,7 @@ import {
 } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import MapLocationPicker from '../components/MapLocationPicker';
+import { getResolvedImageUrl, handleImageError } from '../utils/imageHelper';
 
 function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
   const navigate = useNavigate();
@@ -551,8 +552,9 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
             }}>
               {user.profile_picture ? (
                 <img 
-                  src={`${process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050'}/${user.profile_picture}`}
+                  src={getResolvedImageUrl(user.profile_picture, 'user')}
                   alt="Profile"
+                  onError={(e) => handleImageError(e, 'user')}
                   style={{
                     width: '100%',
                     height: '100%',
@@ -1279,12 +1281,7 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
             
             {sessions.length > 0 ? (
               sessions.map(session => {
-                const API_BASE = process.env.REACT_APP_API_URL 
-                  ? process.env.REACT_APP_API_URL.replace('/api', '') 
-                  : 'http://127.0.0.1:5050';
-                const patientPicture = session.user?.profile_picture
-                  ? `${API_BASE}/${session.user.profile_picture}`
-                  : null;
+                const patientPicture = getResolvedImageUrl(session.user?.profile_picture, 'user');
                 
                 const statusColors = {
                   pending: '#f39c12',
@@ -2192,12 +2189,7 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
             
             {bookings.length > 0 ? (
               bookings.map(booking => {
-                const API_BASE = process.env.REACT_APP_API_URL 
-                  ? process.env.REACT_APP_API_URL.replace('/api', '') 
-                  : 'http://127.0.0.1:5050';
-                const doctorPicture = booking.doctor?.user?.profile_picture
-                  ? `${API_BASE}/${booking.doctor.user.profile_picture}`
-                  : null;
+                const doctorPicture = getResolvedImageUrl(booking.doctor?.user?.profile_picture, 'doctor');
                 
                 const statusColors = {
                   pending: '#f39c12',
@@ -2711,8 +2703,9 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
                     }}>
                       {req.from_user.profile_picture ? (
                         <img 
-                          src={`${process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050'}${req.from_user.profile_picture}`}
+                          src={getResolvedImageUrl(req.from_user.profile_picture, 'user')}
                           alt={req.from_user.username}
+                          onError={(e) => handleImageError(e, 'user')}
                           style={{
                             width: '100%',
                             height: '100%',
@@ -2792,8 +2785,9 @@ function MyProfile({ user, setUser, navigateToInbox, setNavigateToInbox }) {
                   }}>
                     {friend.profile_picture ? (
                       <img 
-                        src={`${process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:5050'}/${friend.profile_picture}`}
+                        src={getResolvedImageUrl(friend.profile_picture, 'user')}
                         alt={friend.username}
+                        onError={(e) => handleImageError(e, 'user')}
                         style={{
                           width: '100%',
                           height: '100%',
